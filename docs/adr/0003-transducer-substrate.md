@@ -1,6 +1,6 @@
 # ADR-0003: The transducer substrate is struct-based, fail-closed for parallelism, and completes once
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-20, user at the ChuiCore phase-1 ★)
 - **Date:** 2026-10-20
 - **Deciders:** the user, at the phase-1 ★ checkpoint
 - **Scope:** ChuiCore.jl

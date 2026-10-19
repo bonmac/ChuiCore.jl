@@ -1,6 +1,6 @@
 # ADR-0004: ChuiCore owns a minimal Lens/Prism core; Accessors.jl is an extension, not a dependency
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-20, user at the ChuiCore phase-1 ★)
 - **Date:** 2026-10-20
 - **Deciders:** the user, at the phase-1 ★ checkpoint (★ Q3: Accessors as a dependency or not)
 - **Scope:** ChuiCore.jl

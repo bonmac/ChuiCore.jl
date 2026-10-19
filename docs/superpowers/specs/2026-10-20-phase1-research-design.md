@@ -1,7 +1,8 @@
 # ChuiCore phase 1 (Research and ADRs): design summary
 
 - **Date:** 2026-10-20. **Branch:** `feat/phase1-research`. **Tier:** T2 (public API shape,
-  dependencies). **Status:** Proposed; waiting for the ★ checkpoint. No code changes.
+  dependencies). **Status:** Accepted (2026-10-20, user at the ChuiCore phase-1 ★; all
+  recommendations taken). No code changes.
 - **Inputs:** `docs/agent/BRIEF.md` (phase 1), the binding contract `contracts/chui-core.md` (in the
   coordinator), ecosystem ADRs 0002, 0006, 0007, 0009.
 - **Evidence:** `docs/research/` (index: [README](../../research/README.md)); every runtime claim was

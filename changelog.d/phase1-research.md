@@ -2,3 +2,6 @@
   (Proposed) on the typeclass encoding, ADTs, the transducer substrate, optics, module layout and
   export tiers, the CompositionsBase dependency, and law-kit packaging; summary spec
   `docs/superpowers/specs/2026-10-20-phase1-research-design.md`. No code changes.
+- ADRs 0001–0008 and the phase-1 spec accepted by the user at the phase-1 ★ (2026-10-20); ADRs
+  0005, 0006 and 0007 depend on pending coordinator amendments (ecosystem ADR-0009, CC-001,
+  ecosystem ADR-0007 §2).

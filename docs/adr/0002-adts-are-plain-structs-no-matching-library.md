@@ -1,6 +1,6 @@
 # ADR-0002: ADTs are plain structs with `Union` aliases; no pattern-matching library
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-20, user at the ChuiCore phase-1 ★)
 - **Date:** 2026-10-20
 - **Deciders:** the user, at the phase-1 ★ checkpoint
 - **Scope:** ChuiCore.jl

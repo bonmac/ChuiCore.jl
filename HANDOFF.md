@@ -6,34 +6,43 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 ## State
 
 - Branch: `feat/phase1-research` (worktree `.worktrees/phase1-research`), from main 06d2ae6.
-  Not merged: **★ checkpoint, waiting for the user** via the lead.
+  Not merged: ★ answered; **waiting for the lead to merge**.
 - Factory 0.2.5, package profile (`.factory-version`). Contracts binding since 2026-10-19.
 - Remote: none yet.
-- Phase: **phase 1 (Research and ADRs) done, at ★.** No code changes.
+- Phase: **phase 1 (Research and ADRs) done and accepted.** No code changes.
   - Research: `docs/research/` (9 notes, index in its README).
-  - ADRs 0001–0008, all Proposed (`docs/adr/README.md`).
-  - Summary spec: `docs/superpowers/specs/2026-10-20-phase1-research-design.md`.
+  - ADRs 0001–0008, all Accepted 2026-10-20 (`docs/adr/README.md`).
+  - Summary spec: `docs/superpowers/specs/2026-10-20-phase1-research-design.md` (Accepted).
 
-## ★ Decisions waiting for the user
+## ★ Decisions (answered by the user, 2026-10-20; all recommendations accepted)
 
-1. **Q1 (ADR-0001):** may the Monoid family be instance values (dictionary passing) classified by a
-   Holy trait, with constructor classes as Holy traits on owned tags? Recommended: yes.
-2. **Q2 (ADR-0005):** export tiers (protocol, aggregators, transducers, optics and recursion schemes
-   public-only); amend ecosystem ADR-0009's "ChuiCore exports `partial`". Recommended: tiers as
-   proposed and amend ADR-0009; the alternative is an opt-in `ChuiCore.Prelude`.
-3. **Q3 (ADR-0004, ADR-0008):** no Accessors hard dependency (it would add 3 packages and +22–41 ms
-   per `using`); own Lens/Prism; ConstructionBase as a hard dependency. Recommended: yes.
-4. **Q4 (ecosystem ADR-0007 §2):** Supposition 0.3.5 on Julia 1.10 does not record failing
-   `@check`s (exit 0). Recommended: amend ADR-0007 §2 to require `@check record=false` plus an
-   explicit `@test`; no upstream issue (the cause is 1.10's `Test`).
-5. **Q5 (ADR-0006):** amend CC-001's "methods take exactly two arguments" (CompositionsBase's
-   method is variadic) through a contract ADR. Recommended: yes.
+1. **Q1 (ADR-0001):** dictionary passing (instance values) with a Holy-trait classifier; constructor
+   classes as Holy traits on owned tags. Accepted.
+2. **Q2 (ADR-0005):** the three name tiers (aggregation protocol, aggregators, transducers, optics
+   and recursion schemes are public, not exported). Accepted. Ecosystem ADR-0009 is amended in the
+   coordinator by another lane (pending).
+3. **Q3 (ADR-0004, ADR-0008):** own Lens/Prism; Accessors as an extension only; ConstructionBase as
+   a hard dependency. Accepted.
+4. **Q4 (ecosystem ADR-0007 §2):** amended to `@check record=false` plus an explicit `@test`, and a
+   planted violation on the LTS job; no upstream issue. Accepted; the coordinator lane writes it
+   (pending).
+5. **Q5 (ADR-0006):** CC-001 amended through a contract ADR (Chui-added methods stay binary; the
+   upstream fallback and a downstream closing varargs method may be variadic). Accepted; the
+   coordinator lane writes it (pending).
+
+## Open contract follow-ups
+
+- The PROVISIONAL items in `contracts/chui-core.md` (coordinator): typeclass trait encoding, export
+  list, law kits, optics, CompositionsBase binding, transducer substrate API. Each ADR's
+  Consequences says when its item can become stable.
+- ADR-0003 Decision 4: only `isstateless` pipelines may run per partition; proposed for the
+  contract.
 
 ## Open lanes
 
 | Lane | Agent | File scope | Status | Report |
 |---|---|---|---|---|
-| phase1-research | the lead's teammate (this lane) | `docs/adr/**`, `docs/research/**`, `docs/superpowers/**`, `HANDOFF.md`, `changelog.d/phase1-research.md` | at ★, committed, not merged | sent to the lead |
+| phase1-research | the lead's teammate (this lane) | `docs/adr/**`, `docs/research/**`, `docs/superpowers/**`, `HANDOFF.md`, `changelog.d/phase1-research.md` | ★ answered, ADRs accepted, committed, not merged | sent to the lead |
 
 All subagents of this lane (5 researchers, 3 critics) reported and are closed.
 
@@ -49,5 +58,5 @@ note. Gate results are in the lane's report to the lead.
 
 ## Next action
 
-- After the user answers the ★ questions: the lead merges this lane, then phase 2 (traits and law
-  kits, composition, monoids).
+- The lead merges this lane; then phase 2 per `docs/agent/BRIEF.md` (traits and law kits,
+  composition, monoids).

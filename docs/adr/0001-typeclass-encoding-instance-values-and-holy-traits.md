@@ -1,6 +1,6 @@
 # ADR-0001: Monoid-like classes are passed as instance values; constructor classes are Holy traits on an owned constructor tag
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-20, user at the ChuiCore phase-1 ★)
 - **Date:** 2026-10-20
 - **Deciders:** the user, at the phase-1 ★ checkpoint (★ Q1: the reading of "Holy traits")
 - **Scope:** ChuiCore.jl

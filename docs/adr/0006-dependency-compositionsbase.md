@@ -1,6 +1,8 @@
 # ADR-0006: Depend on CompositionsBase for the one `⨟` binding
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-20, user at the ChuiCore phase-1 ★). Depends on a pending
+  coordinator amendment: CC-001 via a contract ADR (Chui-added methods stay binary; the upstream
+  fallback and a downstream closing varargs method may be variadic).
 - **Date:** 2026-10-20
 - **Deciders:** the user, at the phase-1 ★ checkpoint
 - **Scope:** ChuiCore.jl (a dependency ADR)

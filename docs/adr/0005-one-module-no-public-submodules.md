@@ -1,6 +1,7 @@
 # ADR-0005: ChuiCore is one module with no public submodules; names are tiered exported / public / internal by a tested clash rule
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-20, user at the ChuiCore phase-1 ★). Depends on a pending
+  coordinator amendment: ecosystem ADR-0009 (ChuiCore does not export `partial`).
 - **Date:** 2026-10-20
 - **Deciders:** the user, at the phase-1 ★ checkpoint (★ Q2: the export tiers and ecosystem ADR-0009)
 - **Scope:** ChuiCore.jl

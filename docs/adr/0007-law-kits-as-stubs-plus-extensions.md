@@ -1,6 +1,7 @@
 # ADR-0007: Law kits are exported stubs whose methods live in extensions on Test and Supposition
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-20, user at the ChuiCore phase-1 ★). Depends on a pending
+  coordinator amendment: ecosystem ADR-0007 §2 (`@check record=false` plus an explicit `@test`).
 - **Date:** 2026-10-20
 - **Deciders:** the user, at the phase-1 ★ checkpoint
 - **Scope:** ChuiCore.jl
