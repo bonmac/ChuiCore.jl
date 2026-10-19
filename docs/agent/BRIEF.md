@@ -1,4 +1,4 @@
-<!-- package brief: coordinator commit 275e879, prompts/10-chui-core.md, copied 2026-10-19 -->
+<!-- package brief: coordinator commit 16b9e6a, prompts/10-chui-core.md, copied 2026-10-19 -->
 
 # Package brief: ChuiCore.jl (functional-programming core)
 
