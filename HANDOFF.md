@@ -36,7 +36,7 @@ Closure proof: no lanes were opened; `git worktree list` shows only the main che
 ## Checks NOT run, and why
 
 - `julia scripts/ci.jl guards`: **fails** on two factory issues (below), not on package code.
-- `julia scripts/check_docs.jl`: fails on `docs/agent/ECOSYSTEM.md:60` (`scripts/lane.py`, a
+- `julia scripts/check_docs.jl`: fails on `docs/agent/ECOSYSTEM.md:60` (scripts/lane.py, a
   reference-project path quoted by the ecosystem rules). Passes when the two `docs/agent/` copies
   are excluded via a scratch `--config`.
 - `julia scripts/ci.jl jet`: not run (JET env not instantiated in the scaffold; nothing to analyse yet).
