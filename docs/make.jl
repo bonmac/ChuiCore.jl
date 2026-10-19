@@ -14,7 +14,7 @@ makedocs(;
     modules = [ChuiCore],
     sitename = "ChuiCore.jl",
     format = Documenter.HTML(; prettyurls = get(ENV, "CI", "false") == "true"),
-    pages = ["Home" => "index.md"],
+    pages = ["Home" => "index.md", "Reference" => "api.md"],
     REMOTE_KW...,
 )
 
