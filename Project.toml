@@ -1,0 +1,7 @@
+name = "ChuiCore"
+uuid = "c0d4c089-5838-4d6c-a383-cbe7040d805f"
+version = "0.0.1"
+authors = ["Boniface Makone"]
+
+[compat]
+julia = "1.10"
