@@ -1,8 +1,8 @@
 # Written by scripts/sync_factory.jl. Do not edit by hand.
 adr_dir = "docs/adr"
 profile = "package"
-source_commit = "16b9e6a066522346d462ed0abb9138285e63beeb"
-synced = "2026-10-19"
+source_commit = "ff0100a956aeea5d1fbcdc6140eae2c74a9f67e0"
+synced = "2026-10-20"
 version = "0.2.4"
 
 [managed]
