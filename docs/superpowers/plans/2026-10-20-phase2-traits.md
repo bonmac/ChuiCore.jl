@@ -35,13 +35,24 @@
 
 **Public, not exported:** `neutral`, `curry`, `fmap`, `pure`, `ap`, `traverse`, `sequence` (each
 exported by Functors 0.4.12 or TypeClasses 1.1.0, so the clash rule forbids exporting them; see the
-lead's decision), `init`, `partial`, `combine`, `final`, `iscommutative`, `combineall`,
+lead's decision, 2026-10-20: follow ADR-0005 rule 2; rule 3's listing of `neutral` as exported is
+to be corrected), `init`, `partial`, `combine`, `final`, `iscommutative`, `combineall`,
 `default_monoid`, `AlgebraClass`, `IsSemigroup`, `IsMonoid`, `NotAlgebra`, the aggregators `Sum`,
 `Prod`, `Count`, `CountTrue`, `AnyM`, `AllM`, `Max`, `Min`, `Extrema`, `First`, `Last`, `Mean`,
 `Moments`, `ReduceM`, `MapM`; `constructorclass`, the tags (`NoTag`, `MaybeTag`, `ArrayTag`,
 `TupleTag`, `DictTag`, `PairTag`, `FunctionTag`, `IdentityTag`, `ZipVectorTag`, `PredicateTag`), the
 `*Style` functions and their `Is*`/`Not*` values, the owned types `Identity`, `ZipVector`,
 `Predicate`; `default_eq`, `Law`.
+
+**Clash evidence** (Julia 1.13.2, fresh scratch environment, 2026-10-20; `Base.isexported(M, n)`
+over the candidate names):
+```
+DataFrames 1.3.6   => [:combine]
+Functors 0.4.12    => [:fmap]
+TypeClasses 1.1.0  => [:pure, :ap, :neutral, :combine, :curry, :Identity]
+(Transducers 0.4.85, Accessors 0.1.45, Setfield 1.1.2, ConstructionBase 1.6.0,
+ CompositionsBase 0.1.2, Base, Core, Base.Iterators: none of the candidates)
+```
 
 **Internal:** everything else (`NoValue`, law tables `_semigroup_laws` …, drivers).
 

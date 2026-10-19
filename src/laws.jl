@@ -49,7 +49,10 @@ test set; a failing `@test` shows the first counterexample. Methods exist only a
   at most 12 samples per argument and at most 1,728 combinations.
 - **Supposition:** when the first generator is a `Supposition.Data.Possibility`, every law runs as
   `@check record=false db=false` and its report is asserted with `@test` (ecosystem ADR-0007 §2: a
-  failing `@check` alone is not recorded on Julia 1.10). Other generators may then be collections,
+  failing `@check` alone is not recorded on Julia 1.10). `db=false`: Supposition otherwise writes
+  counterexamples to the caller's `test/SuppositionDB`, and a database written by a newer Julia
+  makes a later 1.10 run throw ("Cannot read stream serialized with a newer version of Julia").
+  Other generators may then be collections,
   which are sampled with `Data.SampledFrom`. Keyword `max_examples` (default 200).
 - Keyword `laws`: a collection of law names to run (default: all).
 """
