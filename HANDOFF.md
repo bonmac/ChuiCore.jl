@@ -32,9 +32,11 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 ## Open contract follow-ups
 
-- The PROVISIONAL items in `contracts/chui-core.md` (coordinator): typeclass trait encoding, export
-  list, law kits, optics, CompositionsBase binding, transducer substrate API. Each ADR's
-  Consequences says when its item can become stable.
+- The PROVISIONAL items in `contracts/chui-core.md` (coordinator): CompositionsBase binding, export
+  list, typeclass trait encoding, law kits, name-conflict banner, composition helpers, the
+  transducer substrate API, recursion schemes. Each ADR's Consequences says when its item can
+  become stable. The coordinator's eco-amend lane drafts the contract text; applying it is T3
+  (the user).
 - ADR-0003 Decision 4: only `isstateless` pipelines may run per partition; proposed for the
   contract.
 
