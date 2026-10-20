@@ -58,7 +58,7 @@ TypeClasses 1.1.0  => [:pure, :ap, :neutral, :combine, :curry, :Identity]
 
 ## API decisions fixed here (ADR-0001 left them to phase 2)
 
-- `pipe(x, fs...)` = `fs[end](…fs[1](x))`; `curry(f, n)` (also `curry(f, Val(n))`): `curry(f, 2)(a)(b)
+- `pipe(x, f, g) == g(f(x))` (any number of functions, applied left to right); `curry(f, n)` (also `curry(f, Val(n))`): `curry(f, 2)(a)(b)
   == f(a, b)`; `papply(f, args...; kw...)` returns a `PApply` callable appending later arguments
   (own struct: `Base.Fix1` takes one argument on 1.10 and varargs on ≥ 1.12); `flip(f)(a, b, c...)
   == f(b, a, c...)`. Base's `∘`, `Returns`, `splat`, `identity` complete the point-free set.
