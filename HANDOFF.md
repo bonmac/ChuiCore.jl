@@ -90,10 +90,16 @@ phase5-docs and its sub-lanes are merged (a8404ca) and closed.
   `_init_banner` (`src/banner.jl`) catches any error, and guards its own `@debug` log too.
 - Why `invokelatest`: a direct call compiled the banner into the package image (+0.3 MB native
   code, about +3–5 ms on every 1.10 load). With the barrier, non-interactive load equals main's;
-  the price is about 0.25–0.3 s to compile the banner in interactive sessions (direct call: about
-  0.1 s). **Lead's call** if a faster interactive banner is worth the per-load cost. Evidence:
-  `.lanes/evidence/banner-init-load-{release,lts}-d150a86.txt` (script `banner-init-load-script.jl`
-  beside them; gitignored).
+  the price is about 0.25–0.3 s to compile the banner in interactive sessions (interactive load
+  about 0.33 s in all, outside ADR-0009, whose budgets measure non-interactive loads; direct call:
+  about 0.1 s). **Lead's call** if a faster interactive banner is worth the per-load cost.
+  Evidence: `.lanes/evidence/banner-init-load-{release,lts}-d150a86.txt`,
+  `.lanes/evidence/banner-init-imagesize-{release,lts}-aaf9daf.txt` (scripts beside them;
+  gitignored).
+- The banner fires on any interactive *load* of ChuiCore (`import ChuiCore`, or as a dependency
+  of `using ChuiTypes`), where the names are not actually ambiguous in `Main`: documented, and
+  silenced by `CHUI_QUIET_CONFLICTS`. **Lead's call** if it should instead be left to the
+  downstream packages' banners (dplyr warns only on attach).
 - Tests: `test/banner_init_tests.jl` (fresh `julia -i` subprocesses: prints with a planted
   clash; silent with `CHUI_QUIET_CONFLICTS` and when non-interactive; a read-only `stderr`, with and
   without `JULIA_DEBUG=ChuiCore`, does not break `using`).

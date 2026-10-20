@@ -73,32 +73,38 @@ end
         print("loaded ", isinteractive(), " rowrite=", w)
         exit()
         """
-    path, io = mktemp()
-    write(io, script)
-    close(io)
     # Warm the package cache first: a precompile inside the child would log to the broken stderr.
     @test BannerChild.run_child("using ChuiCore"; interactive = false).code == 0
-    r = BannerChild.run_child("include($(repr(path)))"; interactive = true)
-    @test r.code == 0
-    @test r.out == "loaded true rowrite=threw"
-    # With debug logging on, the failure is logged, and that log write to the same broken stderr
-    # must not escape either.
-    r = BannerChild.run_child("include($(repr(path)))"; interactive = true, extra = ["JULIA_DEBUG" => "ChuiCore"])
-    @test r.code == 0
-    @test r.out == "loaded true rowrite=threw"
+    mktemp() do path, io
+        write(io, script)
+        close(io)
+        r = BannerChild.run_child("include($(repr(path)))"; interactive = true)
+        @test r.code == 0
+        @test r.out == "loaded true rowrite=threw"
+        # With debug logging on, the failure is logged, and that log write to the same broken
+        # stderr must not escape either.
+        r = BannerChild.run_child("include($(repr(path)))"; interactive = true, extra = ["JULIA_DEBUG" => "ChuiCore"])
+        @test r.code == 0
+        @test r.out == "loaded true rowrite=threw"
+    end
 end
 
-@testitem "banner init: _init_banner swallows a throwing IO" tags = [:unit] begin
+@testitem "banner init: _init_banner swallows a throwing IO, not Ctrl-C" tags = [:unit] begin
     using Test
     struct ChuiBrokenIO <: IO end
     Base.unsafe_write(::ChuiBrokenIO, ::Ptr{UInt8}, ::UInt) = error("broken io")
     Base.write(::ChuiBrokenIO, ::UInt8) = error("broken io")
+    struct ChuiInterruptIO <: IO end
+    Base.unsafe_write(::ChuiInterruptIO, ::Ptr{UInt8}, ::UInt) = throw(InterruptException())
+    Base.write(::ChuiInterruptIO, ::UInt8) = throw(InterruptException())
     Core.eval(Main, Meta.parse("module ChuiBannerInitA; export clash_i; clash_i() = 1; end"))
     Core.eval(Main, Meta.parse("module ChuiBannerInitB; export clash_i; clash_i() = 2; end"))
     A = Main.ChuiBannerInitA
     withenv("CHUI_QUIET_CONFLICTS" => nothing) do
         @test_throws ErrorException ChuiCore.conflict_banner(ChuiBrokenIO(), A)   # control
         @test ChuiCore._init_banner(ChuiBrokenIO(), A) === nothing
+        # Ctrl-C is not a banner failure: it still interrupts the load.
+        @test_throws InterruptException ChuiCore._init_banner(ChuiInterruptIO(), A)
         io = IOBuffer()
         @test ChuiCore._init_banner(io, A) === nothing
         @test occursin("clash_i", String(take!(io)))

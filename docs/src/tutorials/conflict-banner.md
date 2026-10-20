@@ -114,8 +114,12 @@ julia> using ChuiCore
   Silence this notice with ENV["CHUI_QUIET_CONFLICTS"] = "1".
 ```
 
-Scripts, tests and CI (non-interactive runs) never see it, and neither does a session with
-`CHUI_QUIET_CONFLICTS` set (below). It cannot break the load: if printing the banner fails (a
+It runs whenever ChuiCore is *loaded* in an interactive session: `__init__` cannot tell `using`
+from `import`, so it also prints on `import ChuiCore`, and when ChuiCore loads as a dependency of
+another package (`using ChuiTypes`). In those cases ChuiCore's exports are not brought into
+`Main`, so the listed names are not actually ambiguous there; set `CHUI_QUIET_CONFLICTS` if
+that notice is noise for you. Scripts, tests and CI (non-interactive runs) never see it, and
+neither does a session with `CHUI_QUIET_CONFLICTS` set (below). It cannot break the load: if printing the banner fails (a
 closed or read-only `stderr`, say), `using ChuiCore` still succeeds, and the error is logged at
 debug level (`JULIA_DEBUG=ChuiCore` shows it).
 
@@ -183,13 +187,16 @@ The conflicts themselves remain: a silenced banner just stops reminding you to w
 - Both read global state (what is loaded) and are meant for package load or an occasional check,
   not for loops.
 - **ChuiCore's `__init__`:** a non-interactive `using ChuiCore` pays one `isinteractive()` read;
-  its load time is the same as before ChuiCore had an `__init__` (ADR-0009 budgets unchanged). An
-  interactive load compiles and runs the banner: about 0.25–0.3 s more than a non-interactive one
-  on Julia 1.13.2 and 1.10.12. A direct call from `__init__` (no `invokelatest`) would cut that
-  to about 0.1 s but would compile the banner into the package image (about 0.3 MB of native
-  code) and add about 3–5 ms to *every* load on 1.10, interactive or not (within noise on 1.13).
-  (Fresh-process medians, Apple silicon, loaded machine, 2026-10-20; indicative; evidence
-  `.lanes/evidence/banner-init-load-{release,lts}-d150a86.txt`.)
+  its load time is the same as before ChuiCore had an `__init__`, and it is what ADR-0009's
+  load budgets measure. An interactive load compiles and runs the banner: about 0.25–0.3 s more
+  than a non-interactive one on Julia 1.13.2 and 1.10.12 (about 0.33 s in all, over the 75 ms
+  non-interactive `load_ms` budget; ADR-0009 sets no interactive budget). A direct call from
+  `__init__` (no `invokelatest`) would cut that to about 0.1 s but would compile the banner into
+  the package image (about 0.33 MB more native code) and add about 3–5 ms to *every* load on
+  1.10, interactive or not (within noise on 1.13). (Fresh-process medians, Apple silicon, loaded
+  machine, 2026-10-20; indicative; evidence
+  `.lanes/evidence/banner-init-load-{release,lts}-d150a86.txt` and
+  `.lanes/evidence/banner-init-imagesize-{release,lts}-aaf9daf.txt`.)
 
 Reference: [`ChuiCore.binding_conflicts`](@ref ChuiCore.binding_conflicts),
 [`ChuiCore.conflict_banner`](@ref ChuiCore.conflict_banner).

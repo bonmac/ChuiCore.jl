@@ -173,6 +173,7 @@ function _init_banner(io::IO, mod::Module)
     try
         conflict_banner(io, mod)
     catch err
+        err isa InterruptException && rethrow()   # Ctrl-C during the banner still interrupts
         try
             @debug "ChuiCore: the name-conflict banner failed" exception = (err, catch_backtrace())
         catch
