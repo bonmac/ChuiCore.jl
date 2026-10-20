@@ -343,7 +343,7 @@ An instance is only useful if it is lawful. The law kits `test_functor_laws`,
 and record one inner `@testset` per law in the current test set. They have methods once `Test`
 is loaded:
 
-```jldoctest typeclasses; filter = r"(Test Summary:[^\n]*\n[^\n]*)?"
+```jldoctest typeclasses
 julia> using Test
 
 julia> samples = [Logged(1, String[]), Logged(2, ["two"]), Logged(3, ["a", "b"])];
@@ -352,18 +352,22 @@ julia> fs = [x -> x + 1, x -> 2x];
 
 julia> ks = [x -> Logged(x + 1, ["inc"]), x -> Logged(2x, ["dbl"])];
 
-julia> @testset "Logged laws" begin
-           test_functor_laws(LoggedTag(), samples, fs)
-           test_applicative_laws(LoggedTag(), samples, fs, [0, 5])
-           test_monad_laws(LoggedTag(), samples, ks, [0, 5])
+julia> ts = redirect_stdout(devnull) do
+           @testset "Logged laws" begin
+               test_functor_laws(LoggedTag(), samples, fs)
+               test_applicative_laws(LoggedTag(), samples, fs, [0, 5])
+               test_monad_laws(LoggedTag(), samples, ks, [0, 5])
+           end
        end;
-Test Summary: | Pass  Total  Time
-Logged laws   |   11     11  0.1s
+
+julia> Test.anynonpass(ts), sum(length(kit.results) for kit in ts.results)   # no failure, 11 laws
+(false, 11)
 ```
 
-(The summary line has a timing column and is printed only by an outermost test set, so this
-example filters it out of the comparison; a failing law still fails the doctest.) In a package,
-put these calls in a `@testitem` of its test suite.
+In a package you write only the `@testset`, in a `@testitem` of its test suite; it prints a
+summary and throws `Test.TestSetException` if a law fails. The summary has a timing column, so
+this page sends it to `devnull` and checks the returned test set. A failing law still throws
+here, so a broken instance fails the doctest.
 
 ## What it costs
 

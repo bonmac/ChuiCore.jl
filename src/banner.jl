@@ -22,10 +22,11 @@ and every module reachable from `Main` through its submodules (e.g. `module A �
 REPL), except `mod` itself. Only modules loaded **before** the call are seen.
 
 Cost: one pass over the other modules per exported name (`Base.isexported` checks), plus one
-walk of `Main`'s submodules, so O(exports × loaded modules): about 34 μs and 18 KB for ChuiCore's
-36 exports against 32 loaded modules on Julia 1.13.2, about 46 μs and 71 KB against 56 on
-1.10.12 (BenchmarkTools medians, Apple silicon, loaded machine, 2026-10-20; indicative, after
-compilation). No budget is set for it. Meant for package load, not
+walk of `Main`'s submodules, so O(exports × loaded modules): about 36 μs and 18 KB for ChuiCore's
+35 exported names (36 with the module name) against 32 loaded modules on Julia 1.13.2, about 46 μs
+and 71 KB against 56 on 1.10.12 (BenchmarkTools medians, Apple silicon, loaded machine,
+2026-10-20; indicative, after compilation; `docs/src/tutorials/conflict-banner.md` cites the
+evidence). No budget is set for it. Meant for package load, not
 for loops.
 
 **Effects:** reads global state (the loaded modules and `Main`'s submodules), so the result

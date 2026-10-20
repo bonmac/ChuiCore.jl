@@ -422,7 +422,8 @@ _apply(t::Tuple, rf) = asrf(first(t), _apply(Base.tail(t), rf))
 Protocol (ADR-0003 §2): the accumulator a fold begins with, built from the user's initial value
 `acc`. Stateful transducers create their per-fold state here (once per fold, once per partition),
 wrapping the inner accumulator; stateless ones pass `acc` through. Cost: a stateful layer's state
-(e.g. one buffer for `Partition`); nothing for stateless layers.
+(e.g. one buffer for `Partition`); nothing for stateless layers. `start` itself is pure: the state
+is fresh, and only [`ChuiCore.next`](@ref) and [`ChuiCore.complete`](@ref) mutate it.
 
 ```jldoctest
 julia> using ChuiCore: asrf, start, Map
@@ -440,6 +441,10 @@ start(rf::R, acc) = start(rf.inner, acc)
 Protocol (ADR-0003 §2): one reduction step; returns the new accumulator, or a
 [`ChuiCore.Reduced`](@ref) to stop the fold. Every transducer defines a method for `R{<:T}`.
 Cost: the step of each layer; stateless layers neither allocate nor dispatch dynamically.
+
+Effects: a stateful layer mutates the per-fold state held inside `acc` (created by
+[`ChuiCore.start`](@ref); e.g. `Partition` `push!`es into and `empty!`s its buffer), so an
+accumulator is used once. Stateless layers have no effects of their own.
 
 ```jldoctest
 julia> using ChuiCore: asrf, next, Filter
@@ -459,6 +464,9 @@ Protocol (ADR-0003 §2): the completion step, run **exactly once** per fold, als
 termination (on the unreduced accumulator). Stateful layers flush pending state into their
 downstream (never after it has reduced), unwrap their state and complete the inner reducing
 function once. Cost: a layer's flush, if any.
+
+Effects: a stateful layer empties the per-fold state held inside `acc` (created by
+[`ChuiCore.start`](@ref)) as it flushes it. Stateless layers have no effects of their own.
 
 `Partition` flushes its last, shorter chunk on `complete`:
 

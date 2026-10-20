@@ -2,7 +2,6 @@
 
 ```@meta
 DocTestSetup = :(using ChuiCore)
-DocTestFilters = [r"(Test Summary:.*)?"s]
 ```
 
 An *aggregator* is a small value, such as `ChuiCore.Sum()`, that says how to reduce a column of
@@ -315,17 +314,21 @@ julia> using Test
 
 julia> samples = [[3, 1, 10], [5], [-2, 7, 7, 0], Int[]];
 
-julia> test_aggregator_laws(Range(), samples; reference = v -> maximum(v) - minimum(v))
-Test Summary:                 | Pass  Total  Time
-test_aggregator_laws(Range()) |    6      6  0.0s
+julia> ts_range = redirect_stdout(devnull) do
+           @testset "Range" begin
+               test_aggregator_laws(Range(), samples; reference = v -> maximum(v) - minimum(v))
+               test_semigroup_laws(Range(), samples)
+           end
+       end;
 
-julia> test_semigroup_laws(Range(), samples)
-Test Summary:                | Pass  Total  Time
-test_semigroup_laws(Range()) |    1      1  0.0s
+julia> Test.anynonpass(ts_range), sum(length(kit.results) for kit in ts_range.results)   # no failure, 7 laws
+(false, 7)
 ```
 
-(The test summaries on this page are shown for reading, but not compared by the doctests: Test
-prints a summary only for a top-level test set, and its Time column varies.)
+In a test file you would write only the `@testset`; it prints a summary (one pass per law) and
+throws `Test.TestSetException` if a law fails. That summary has a timing column that changes on
+every run, so this page sends it to `devnull` and checks the returned test set instead. A failing
+law still throws, and the doctest fails.
 
 A monoid is checked with [`test_monoid_laws`](@ref ChuiCore.test_monoid_laws), which adds the
 identity laws of `neutral`. A sum of squares, declared through `ReduceM`:
@@ -333,12 +336,15 @@ identity laws of `neutral`. A sum of squares, declared through `ReduceM`:
 ```jldoctest monoids
 julia> sq = MapM(abs2, ReduceM(+; neutral = 0, commutative = true));
 
-julia> @testset "sum of squares" test_monoid_laws(sq, [[1, 2], Int[], [-3]]);
-Test Summary:  | Pass  Total  Time
-sum of squares |    5      5  0.0s
+julia> ts_sq = redirect_stdout(devnull) do
+           @testset "sum of squares" test_monoid_laws(sq, [[1, 2], Int[], [-3]])
+       end;
+
+julia> Test.anynonpass(ts_sq), [law.description for law in only(ts_sq.results).results]
+(false, ["associativity", "left identity", "right identity", "neutral matches init", "neutral is fresh"])
 ```
 
-(The outer `@testset` only gives the summary a short title: the kit's own title prints the whole
+(The outer `@testset` gives the summary a short title: the kit's own title prints the whole
 `MapM{…}` type.)
 
 ## What it costs

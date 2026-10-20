@@ -2,9 +2,13 @@
 # - :doctest runs every jldoctest in the docstrings and in docs/src (tutorials included). Printed
 #   types and errors differ between Julia versions, so runtests.jl skips :doctest when
 #   CI_STABLE=false (the lts and pre CI jobs); `julia scripts/ci.jl docs` runs them too.
-# - :quality checks that every exported and public name owned by ChuiCore has a jldoctest (or a
-#   row in docs/doctest-exemptions.md) and states its runtime cost (the brief: "give every
-#   abstraction a documented runtime cost").
+#   Law-kit examples never filter the test summary: they send it to devnull and show
+#   `Test.anynonpass(ts)`, so a failing law throws and fails its doctest (a filter that
+#   deletes the summary would also delete the error and let a failing law pass).
+# - :quality checks that every exported and public name owned by ChuiCore has a ```jldoctest block
+#   (or a row in docs/doctest-exemptions.md) and states its runtime cost in one of the forms the
+#   docstrings use ("Cost:", "**Cost:**", "Cost (indicative):", "Cost as", "Runtime cost:"; the
+#   brief: "give every abstraction a documented runtime cost").
 
 @testitem "doctests: docstrings and docs/src (ADR-0008 §3)" tags = [:doctest] begin
     using Documenter
@@ -27,8 +31,9 @@ end
     # `⨟` and `opcompose` are CompositionsBase's bindings (ADR-0006): their docstrings live there.
     owned = [n for n in names(M) if n !== :ChuiCore && Docs.Binding(M, n).mod === M]
     @test issubset(exempt, Set(owned))
-    no_doctest = sort!([n for n in owned if !(n in exempt) && !occursin("jldoctest", get(texts, n, ""))])
+    no_doctest = sort!([n for n in owned if !(n in exempt) && !occursin("```jldoctest", get(texts, n, ""))])
     @test no_doctest == Symbol[]
-    no_cost = sort!([n for n in owned if !occursin(r"\bcost"i, get(texts, n, ""))])
+    cost_form = r"\b(?:Cost(?::|\*\*| \(indicative\):| as )|Runtime cost:)"
+    no_cost = sort!([n for n in owned if !occursin(cost_form, get(texts, n, ""))])
     @test no_cost == Symbol[]
 end

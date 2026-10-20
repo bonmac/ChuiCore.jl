@@ -2,7 +2,10 @@
 
 ```@meta
 DocTestSetup = :(using ChuiCore)
-DocTestFilters = [r"(Test Summary:.*)?"s, r"t::Tuple\{.*\} = .*"]
+# Only the shrunk Supposition counterexample varies between runs (RandomDevice seeds). The filter
+# rewrites that one line in both expected and actual output; the law names checked after it still
+# have to match, so it cannot hide a failure.
+DocTestFilters = [r"t::Tuple\{.*\} = .*"]
 ```
 
 A package that defines its own aggregator, monoid, functor or lens should test that the instance
@@ -79,10 +82,29 @@ kit uses: `eq = (a, b, v) -> isapprox(a, b; rtol = 1e-6)` for an aggregator kit.
 Its samples are *chunks*: each becomes a fresh accumulator `partial(m, init(m), chunk)`, and
 results are compared after `final`:
 
+```julia
+@testset "Max" test_semigroup_laws(Max(), [[3, 1], Int[], [7], [-2, 5]])
+```
+
+In a test file that is all you write: the test set prints a summary (one pass per law) and, if a
+law fails, the counterexample, and then throws `Test.TestSetException`. The summary has a timing
+column that changes on every run, so the examples on this page send it to `devnull`, keep the
+test set, and show what it recorded. A failing law still throws, so the example fails the
+doctest:
+
 ```jldoctest kits
-julia> test_semigroup_laws(Max(), [[3, 1], Int[], [7], [-2, 5]])
-Test Summary:                       | Pass  Total  Time
-test_semigroup_laws(ChuiCore.Max()) |    1      1  0.0s
+julia> ts_max = redirect_stdout(devnull) do
+           @testset "Max" test_semigroup_laws(Max(), [[3, 1], Int[], [7], [-2, 5]])
+       end;
+
+julia> Test.anynonpass(ts_max)   # false: every law passed
+false
+
+julia> laws_run(ts) = [law.description for kit in ts.results for law in kit.results];
+
+julia> laws_run(ts_max)
+1-element Vector{String}:
+ "associativity"
 ```
 
 [`test_monoid_laws`](@ref ChuiCore.test_monoid_laws) adds `left identity` and `right identity`
@@ -92,9 +114,12 @@ not change the next). Concatenation of vectors is a monoid that is not commutati
 ```jldoctest kits
 julia> concat = ReduceM(vcat; neutral = Int[]);
 
-julia> @testset "vcat monoid" test_monoid_laws(concat, [[1], Int[], [2, 3], [4]]);
-Test Summary: | Pass  Total  Time
-vcat monoid   |    5      5  0.0s
+julia> ts_concat = redirect_stdout(devnull) do
+           @testset "vcat monoid" test_monoid_laws(concat, [[1], Int[], [2, 3], [4]])
+       end;
+
+julia> Test.anynonpass(ts_concat), laws_run(ts_concat)
+(false, ["associativity", "left identity", "right identity", "neutral matches init", "neutral is fresh"])
 ```
 
 [`test_aggregator_laws`](@ref ChuiCore.test_aggregator_laws) checks CC-004 on each sample
@@ -106,17 +131,23 @@ on non-empty inputs:
 ```jldoctest kits
 julia> mean_ref(v) = sum(v) / length(v);
 
-julia> test_aggregator_laws(Mean(), [[1.0, 2.5], Float64[], [4.0, -1.0, 0.5]]; reference = mean_ref)
-Test Summary:                         | Pass  Total  Time
-test_aggregator_laws(ChuiCore.Mean()) |    6      6  0.0s
+julia> ts_mean = redirect_stdout(devnull) do
+           @testset "Mean" test_aggregator_laws(Mean(), [[1.0, 2.5], Float64[], [4.0, -1.0, 0.5]]; reference = mean_ref)
+       end;
+
+julia> Test.anynonpass(ts_mean), length(laws_run(ts_mean))
+(false, 6)
 ```
 
 Run a subset with `laws`. A misspelled law name is an error, not a silent pass:
 
 ```jldoctest kits
-julia> @testset "split only" test_aggregator_laws(Sum(), [[1, 2, 3]]; laws = ["split invariance"]);
-Test Summary: | Pass  Total  Time
-split only    |    1      1  0.0s
+julia> ts_split = redirect_stdout(devnull) do
+           @testset "split only" test_aggregator_laws(Sum(), [[1, 2, 3]]; laws = ["split invariance"])
+       end;
+
+julia> Test.anynonpass(ts_split), laws_run(ts_split)
+(false, ["split invariance"])
 
 julia> test_aggregator_laws(Sum(), [[1, 2, 3]]; laws = ["split invariant"])
 ERROR: ArgumentError: unknown law name(s) ["split invariant"]; this kit's laws are ["split invariance", "empty partition identity", "chunk concatenation", "commutativity", "init is fresh"]
@@ -147,9 +178,12 @@ The same conventions hold for the constructor classes (instance = a tag such as
 [`test_prism_laws`](@ref ChuiCore.test_prism_laws). Their `eq` takes two arguments. One example:
 
 ```jldoctest kits
-julia> test_functor_laws(ChuiCore.MaybeTag(), [Some(1), nothing, Some(-3)], [x -> x + 1, abs])
-Test Summary:                          | Pass  Total  Time
-test_functor_laws(ChuiCore.MaybeTag()) |    2      2  0.0s
+julia> ts_maybe = redirect_stdout(devnull) do
+           @testset "Maybe" test_functor_laws(ChuiCore.MaybeTag(), [Some(1), nothing, Some(-3)], [x -> x + 1, abs])
+       end;
+
+julia> Test.anynonpass(ts_maybe), laws_run(ts_maybe)
+(false, ["identity", "composition"])
 ```
 
 ## Property-based: Supposition generators
@@ -165,9 +199,12 @@ julia> using Supposition: Data
 
 julia> chunks = Data.Vectors(Data.Integers(-100, 100); max_size = 8);
 
-julia> test_monoid_laws(Sum(), chunks; max_examples = 50)
-Test Summary:                    | Pass  Total  Time
-test_monoid_laws(ChuiCore.Sum()) |    5      5  0.0s
+julia> ts_sum = redirect_stdout(devnull) do
+           @testset "Sum" test_monoid_laws(Sum(), chunks; max_examples = 50)
+       end;
+
+julia> Test.anynonpass(ts_sum), length(laws_run(ts_sum))
+(false, 5)
 ```
 
 ### The rule: `@check record=false db=false`, then `@test` on the report

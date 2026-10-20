@@ -15,6 +15,15 @@
   docstrings and `docs/src` on stable Julia; a `:quality` item fails when an owned public name
   lacks a `jldoctest` (unless listed in `docs/doctest-exemptions.md`) or a cost statement.
   Documenter joins `test/Project.toml`; Accessors, Supposition and Test join `docs/Project.toml`.
+  The cost check accepts only the cost forms the docstrings use (`Cost:`, `**Cost:**`,
+  `Cost (indicative):`, `Cost as`, `Runtime cost:`), and the doctest check needs a
+  ```` ```jldoctest ```` block, not just the word.
+- Law-kit examples (the kit docstrings, the law-kits, monoids and typeclasses tutorials) send the
+  test summary to `devnull` and show `Test.anynonpass(ts)` and the laws run, instead of filtering
+  the summary out of the comparison: that filter also deleted the error, so a failing law passed
+  its doctest. A failing law now fails the doctest (checked with planted broken instances).
+- `ChuiCore.next` and `ChuiCore.complete` carry an `Effects:` line: a stateful layer such as
+  `Partition` mutates the per-fold state inside the accumulator that `start` created.
 - Error-message wording: the constructor-class errors now say "is not an Applicative",
   "an Alternative", "an Arrow" (they said "a Applicative" etc.); message text only, the
   exception type (`ArgumentError`) is unchanged.

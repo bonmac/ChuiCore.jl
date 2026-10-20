@@ -117,8 +117,9 @@ For lazy sequences, `Base.Iterators` is fused at compile time and is the better 
 ## The conflict banner
 
 `binding_conflicts` is O(exported names × loaded modules), run once at package load: measured
-≈35 µs and 18 KB on 1.13.2 (36 exports, 32 loaded modules), ≈46 µs and 71 KB on 1.10.12 (56
-modules); no budget is set for it. `conflict_banner` adds printing, and computes nothing when
+≈36 µs and 18 KB on 1.13.2 (35 exported names plus the module name, 32 loaded modules), ≈46 µs
+and 71 KB on 1.10.12 (56 modules; evidence `.lanes/evidence/p5-optics-costs-{release,lts}-8fbb53f.txt`);
+no budget is set for it. `conflict_banner` adds printing, and computes nothing when
 silenced (`CHUI_QUIET_CONFLICTS=1`).
 
 ## Optics, one more trap

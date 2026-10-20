@@ -1,8 +1,8 @@
 # Recursion schemes (docs/research/recursion-schemes-free-laziness.md §1–2, Recommendations 1–4;
 # plan "Recursion schemes"). A scheme runs over any value whose type has a Functor instance
 # (`fmap` through `constructorclass`/`FunctorStyle`), reached through `project`. Every scheme is
-# recursive: see the stack limit in the docstrings. Costs quoted are the research measurements
-# (Apple silicon, shared machine, ±50%): treat them as orders of magnitude.
+# recursive: see the stack limit in the docstrings. The docstrings' cost figures cite
+# docs/src/performance.md (Apple silicon, shared machine): treat them as orders of magnitude.
 
 const _SALT_FIX = 0x4c1e7b9a2d5f3086 % UInt
 
