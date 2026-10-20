@@ -7,8 +7,8 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 - Branch: `feat/phase3-schemes` (worktree `.worktrees/phase3-schemes`), from main 20f5c14 (phases
   1–2 merged). **Phase 3 implemented and committed; reviewer FINAL VERDICT: APPROVE WITH NITS
-  (S1, S2, S4 and the nits fixed; S3 fixed afterwards by `JuliaTestItems.toml`, re-review below);
-  waiting for the lead to merge.** Plan: `docs/superpowers/plans/2026-10-20-phase3-schemes.md`.
+  (S1–S4 and the nits fixed; the final re-review at 8f8a9ca leaves only N6, a factory-tooling note:
+  `dod.jl`/`lane audit` use the stale `origin/main`); waiting for the lead to merge.** Plan: `docs/superpowers/plans/2026-10-20-phase3-schemes.md`.
 - Factory 0.2.5, package profile. Contracts binding since 2026-10-19.
 - Remote: `origin/main` is at 06d2ae6, behind local main, so `dod.jl` and `lane audit` count
   phases 1–2 too until main is pushed (run `dod.jl --base 20f5c14` meanwhile).
