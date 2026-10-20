@@ -53,7 +53,7 @@ type folds to a constant:
 | dispatch to an instance | free (above) |
 | `fmap`, `ap`, `chain`, `alt` on Maybe, `Identity`, tuples, pairs | no heap allocation for isbits values (measured with `@allocated`) |
 | the same on `Array` | one new `Vector`; `ap`/`chain` grow it while filling (its length is not known up front) |
-| `traverse`, `sequence` on vectors | O(n²) element copies (measured: 1,664 B for 10 elements, 53,968 B for 100) |
+| `traverse`, `sequence` on vectors | O(n²) element copies (measured with `@allocated` after warm-up, Maybe applicative, Julia 1.13.2: 1,664 B for 10 elements, 53,968 B for 100, 4,463,920 B for 1,000; evidence `.lanes/evidence/traverse-allocs-55e234b.txt`) |
 | `ZipVector` | one new `Vector` per construction and per operation |
 | function Profunctor/Arrow ops | one small immutable callable, no heap allocation for isbits functions |
 
