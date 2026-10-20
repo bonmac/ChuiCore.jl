@@ -17,6 +17,8 @@ include("compose.jl")
 include("laws.jl")
 include("algebra/algebra.jl")
 include("classes/classes.jl")
+include("transducers/transducers.jl")
+include("transducers/folds.jl")
 include("names.jl")
 
 # Exported tier (ADR-0005 §3). Each name passes the clash list (test/exports/).

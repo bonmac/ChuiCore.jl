@@ -33,3 +33,9 @@
 @compat public CategoryStyle, IsCategory, NotCategory
 @compat public ArrowStyle, IsArrow, NotArrow
 @compat public Identity, ZipVector, Predicate
+
+# The transducer substrate (ADR-0003 §7): types, reducing functions, protocol, folds.
+@compat public Transducer, Map, Filter, MapCat, Take, TakeWhile, Scan, Partition, Composed
+@compat public R, Bottom, asrf, start, next, complete, isstateless
+@compat public Reduced, reduced, unreduced, isreduced
+@compat public foldxl, foldparts, foldxt, aggregate

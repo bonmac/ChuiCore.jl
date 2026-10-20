@@ -11,9 +11,13 @@ const EXCLUDE = get(ENV, "CI_STABLE", "true") == "false" ?
     (:slow, :quality, :contract, :differential, :doctest, :snapshot) :
     (:slow, :quality, :contract, :differential)
 const SELECT = Symbol.(ARGS)
+const ROOT = dirname(@__DIR__)
 :contract in SELECT && @info "contract items run in test/contracts/'s own environment: julia scripts/ci.jl contracts"
 
 @run_package_tests filter = ti -> begin
+    # TestItemRunner scans the whole package directory: never pick up test items from lane
+    # scratch copies or nested worktrees (both gitignored).
+    first(splitpath(relpath(ti.filename, ROOT))) in (".lanes", ".worktrees") && return false
     :contract in ti.tags && return false
     :all in SELECT && return true
     isempty(SELECT) && return !any(in(EXCLUDE), ti.tags)
