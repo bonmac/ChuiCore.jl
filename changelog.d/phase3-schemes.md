@@ -77,5 +77,9 @@
 - `Sum`, `Prod` and `Mean` document that they take scalar elements, with `ReduceM` for vectors
   (nit N2). N4 (`BifunctorStyle` on tuples that are not 2-tuples) is unchanged: a tag-level trait
   cannot see a tuple's length, and `bimap` throws a documented `ArgumentError`.
-- `test/runtests.jl` no longer runs test items from `.lanes/` or `.worktrees/` below the package
-  root.
+- A root `JuliaTestItems.toml` (`exclude = ["/.lanes/", "/.worktrees/"]`) keeps TestItemRunner
+  out of lane scratch copies and nested worktrees: their files are never parsed, so a stale
+  `@testmodule` there cannot shadow a real one and a malformed file there cannot abort the run
+  (a test proves it on a toy package, with a control run that fails without the file).
+  `test/Project.toml` requires `TestItemRunner = "1.3.2"`, the version verified to read it;
+  `test/runtests.jl` also skips test items under those directories.

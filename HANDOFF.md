@@ -6,8 +6,9 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 ## State
 
 - Branch: `feat/phase3-schemes` (worktree `.worktrees/phase3-schemes`), from main 20f5c14 (phases
-  1–2 merged). **Phase 3 implemented and committed; waiting for the reviewer's final verdict on the
-  fixes, then for the lead to merge.** Plan: `docs/superpowers/plans/2026-10-20-phase3-schemes.md`.
+  1–2 merged). **Phase 3 implemented and committed; reviewer FINAL VERDICT: APPROVE WITH NITS
+  (S1, S2, S4 and the nits fixed; S3 fixed afterwards by `JuliaTestItems.toml`, re-review below);
+  waiting for the lead to merge.** Plan: `docs/superpowers/plans/2026-10-20-phase3-schemes.md`.
 - Factory 0.2.5, package profile. Contracts binding since 2026-10-19.
 - Remote: `origin/main` is at 06d2ae6, behind local main, so `dod.jl` and `lane audit` count
   phases 1–2 too until main is pushed (run `dod.jl --base 20f5c14` meanwhile).
@@ -36,6 +37,8 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 3. `Lazy` caches a thrown exception (at most one evaluation); a self-forcing body throws.
 4. `R` and `Bottom` are public (downstream transducers dispatch on `R{<:T}`).
 5. `foldparts` waits for every task; results after a stop are discarded.
+6. A root `JuliaTestItems.toml` excludes `.lanes/` and `.worktrees/` from the test-item search
+   (review S3; the lead approved the file 2026-10-20 and is seeding it in the factory template).
 
 ## Deferred (with reasons)
 
@@ -43,9 +46,6 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
   environment, and no consumer asks for it yet.
 - Prisms inside *Accessors* compositions: needs Accessors' non-public `OpticStyle`/`ModifyBased`.
 - `eduction`, a stack-safe iterative `cata`, a typed `Cofree`: not in v1.
-- Review S3 (TestItemRunner still loads `@testmodule`s under `.lanes/`/`.worktrees/`): the fix is a
-  root `JuliaTestItems.toml` (outside the lane's file scope; asked the lead). Until then keep
-  scratch copies outside the package directory.
 
 ## Open contract follow-ups (for the lead; drafts in the lane report)
 
