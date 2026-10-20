@@ -15,7 +15,22 @@ const _SALT_COMPOSE = 0x2e8d5a1c9b7f3046 % UInt
 The identity functor: a box around one value. Tag `IdentityTag()`; Functor, Applicative
 (`pure(IdentityTag(), x) == Identity(x)`), Monad, Foldable (iterates its one value) and
 Traversable. It is the applicative of the Traversable `identity` law. `==`, `isequal` and `hash`
-compare the value. No runtime cost beyond the stored value.
+compare the value.
+
+```jldoctest
+julia> ChuiCore.fmap(x -> x + 1, ChuiCore.Identity(1)) == ChuiCore.Identity(2)
+true
+
+julia> chain(x -> ChuiCore.Identity(2x), ChuiCore.Identity(3)).value
+6
+
+julia> collect(ChuiCore.Identity(5))
+1-element Vector{Int64}:
+ 5
+```
+
+Cost: nothing beyond the stored value: an immutable one-field struct, so no heap allocation when
+the value is isbits.
 """
 struct Identity{T}
     value::T
@@ -53,7 +68,20 @@ vectors, as a wrapper type with its own tag `ZipVectorTag()` (ADR-0001 §3). Fun
 the elements. `ap` pairs functions and values position by position, truncating to the shorter;
 `pure(ZipVectorTag(), x)` is an infinite repetition of `x` (stored as one element and a flag), so
 the Applicative laws hold exactly. `==`, `isequal` and `hash` compare by value; a repetition
-equals only a repetition. Cost: one `Vector` per operation.
+equals only a repetition.
+
+```jldoctest
+julia> ChuiCore.ap(ChuiCore.ZipVector([x -> x + 1, x -> 10x]), ChuiCore.ZipVector([1, 2, 3]))
+ChuiCore.ZipVector([2, 20])
+
+julia> ChuiCore.pure(ChuiCore.ZipVectorTag(), 1)
+ChuiCore.pure(ChuiCore.ZipVectorTag(), 1)
+
+julia> ChuiCore.ap(ChuiCore.pure(ChuiCore.ZipVectorTag(), x -> 2x), ChuiCore.ZipVector([1, 2]))
+ChuiCore.ZipVector([2, 4])
+```
+
+Cost: one new `Vector` per construction (`collect` copies the input) and per `fmap` or `ap`.
 """
 struct ZipVector{T}
     xs::Vector{T}
@@ -102,8 +130,23 @@ end
 
 A callable `a -> Bool` wrapping `f`; `Predicate(f)(x)` asserts that `f(x)` is a `Bool`. Tag
 `PredicateTag()`; Contravariant: `contramap(g, p) == Predicate(g ⨟ p.f)`, so
-`contramap(g, p)(x) == p(g(x))`. `==`, `isequal` and `hash` compare the wrapped function. Cost:
-the call of `f` plus a type assertion.
+`contramap(g, p)(x) == p(g(x))`. `==`, `isequal` and `hash` compare the wrapped function.
+
+```jldoctest
+julia> p = ChuiCore.Predicate(iseven);
+
+julia> p(4)
+true
+
+julia> contramap(length, p)("abc")
+false
+
+julia> ChuiCore.Predicate(x -> x)(1)
+ERROR: TypeError: non-boolean (Int64) used in boolean context
+```
+
+Cost: a call costs the call of `f` plus a type assertion; the wrapper is an immutable one-field
+struct (no heap allocation when `f` is isbits).
 """
 struct Predicate{F}
     f::F
