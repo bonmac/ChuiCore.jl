@@ -15,7 +15,8 @@ end
     # `public` exists from Julia 1.11; on 1.10 these checks misreport (ADR-0006, E-26).
     if VERSION >= v"1.11"
         @test check_all_explicit_imports_are_public(ChuiCore) === nothing
-        @test check_all_qualified_accesses_are_public(ChuiCore) === nothing
+        # The law-kit drivers in ext/ are ChuiCore's own code and read its internal kit table.
+        @test check_all_qualified_accesses_are_public(ChuiCore; ignore = (:_KITS,)) === nothing
     end
 end
 
@@ -45,22 +46,32 @@ end
     if VERSION < v"1.11"
         @info "clash-list check runs on stable Julia only: skipped on $VERSION"
     else
+        # Two environments (see test/exports/check.jl): TypeClasses cannot be installed next to
+        # ChuiCore, so step 1 records ChuiCore's exports and step 2 checks them without ChuiCore.
         src = joinpath(pkgdir(ChuiCore), "test", "exports")
-        env = mktempdir()
-        cp(joinpath(src, "Project.toml"), joinpath(env, "Project.toml"))
-        julia = Base.julia_cmd()
-        setup = """
-        using Pkg
-        Pkg.develop(path = $(repr(pkgdir(ChuiCore))); io = devnull)
-        Pkg.instantiate(; io = devnull)
-        """
-        run(`$julia --startup-file=no --project=$env -e $setup`)
-        out = IOBuffer()
-        cmd = pipeline(ignorestatus(`$julia --startup-file=no --project=$env $(joinpath(src, "check.jl"))`); stdout = out)
-        proc = run(cmd)
-        report = String(take!(out))
-        print(report)
-        @test proc.exitcode == 0
-        @test !occursin("CLASH", report)
+        # Pkg.test's sandbox sets JULIA_LOAD_PATH to the test environment; the child processes
+        # need the default load path (Pkg, their own --project) instead.
+        julia = addenv(Base.julia_cmd(), "JULIA_LOAD_PATH" => "@:@stdlib", "JULIA_PROJECT" => nothing)
+        function scratch_env(project_dir, develop)
+            env = mktempdir()
+            cp(joinpath(project_dir, "Project.toml"), joinpath(env, "Project.toml"))
+            dev = develop ? "Pkg.develop(path = $(repr(pkgdir(ChuiCore))); io = devnull);" : ""
+            run(`$julia --startup-file=no --project=$env -e "using Pkg; $dev Pkg.instantiate(; io = devnull)"`)
+            return env
+        end
+        function step(env, mode, file)
+            out = IOBuffer()
+            cmd = `$julia --startup-file=no --project=$env $(joinpath(src, "check.jl")) $mode $file`
+            proc = run(pipeline(ignorestatus(cmd); stdout = out))
+            report = String(take!(out))
+            print(report)
+            return proc.exitcode, report
+        end
+        file = joinpath(mktempdir(), "exports.toml")
+        code1, _ = step(scratch_env(joinpath(src, "chuicore"), true), "names", file)
+        @test code1 == 0
+        code2, report = step(scratch_env(src, false), "clashes", file)
+        @test code2 == 0
+        @test occursin(" 0 clashes", report)
     end
 end
