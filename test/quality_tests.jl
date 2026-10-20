@@ -16,7 +16,11 @@ end
     if VERSION >= v"1.11"
         @test check_all_explicit_imports_are_public(ChuiCore) === nothing
         # The law-kit drivers in ext/ are ChuiCore's own code and read its internal kit table.
-        @test check_all_qualified_accesses_are_public(ChuiCore; ignore = (:_KITS,)) === nothing
+        # Supposition 0.3 declares nothing `public`: `Data.Possibility`, `Data.SampledFrom` and
+        # `Data.Pairs` are its documented generator API; `Supposition.Pass` is the report internal
+        # that ADR-0007 §4 accepts (pinned by compat, covered by the planted violations).
+        ignore = (:_KITS, :Possibility, :SampledFrom, :Pairs, :Pass)
+        @test check_all_qualified_accesses_are_public(ChuiCore; ignore) === nothing
     end
 end
 
