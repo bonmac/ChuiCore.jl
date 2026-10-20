@@ -19,7 +19,14 @@ end
         # Supposition 0.3 declares nothing `public`: `Data.Possibility`, `Data.SampledFrom` and
         # `Data.Pairs` are its documented generator API; `Supposition.Pass` is the report internal
         # that ADR-0007 §4 accepts (pinned by compat, covered by the planted violations).
-        ignore = (:_KITS, :_check_selected, :Possibility, :SampledFrom, :Pairs, :Pass)
+        # Base has no public replacement for two names phase 3 reads: `Base.promote_op` infers
+        # `Lazy(f)`'s value type (also used that way by LinearAlgebra and many packages), and
+        # `Base.loaded_modules` is the banner's set of loaded packages (request R9). A change in
+        # either shows up in the lazy and banner test items on both Julia versions.
+        ignore = (
+            :_KITS, :_check_selected, :Possibility, :SampledFrom, :Pairs, :Pass,
+            :promote_op, :loaded_modules,
+        )
         @test check_all_qualified_accesses_are_public(ChuiCore; ignore) === nothing
     end
 end
