@@ -6,6 +6,8 @@
 Aggregator for `Statistics.mean` (CC-007). The accumulator is `(float sum, count)`, a monoid with
 `neutral` `(0.0, 0)`; `final` divides, so empty input gives `NaN`. The sum is a float sum (`float(x)`
 per element), so `typemax(Int)`-sized integers never overflow and the result is a float. Commutative.
+Elements must be real scalars: vector elements throw a `MethodError` (`float` of a vector added to a
+`Float64`); v1 has no built-in element-wise mean of vectors.
 Cost: one pass; a non-empty `AbstractArray` chunk uses Base's pairwise `sum(float, chunk)`.
 """
 struct Mean end

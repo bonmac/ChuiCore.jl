@@ -6,7 +6,9 @@
     Sum()
 
 Aggregator for `sum` (CC-007): Monoid, commutative, empty input `0`. `neutral(Sum(), T) = zero(T)`.
-Cost: one pass; a non-empty `AbstractArray` chunk uses Base's pairwise `sum`.
+Elements must be scalars that add to the integer `0` (numbers): the accumulator starts at `0`, so
+vector elements throw a `MethodError`; for those use `ReduceM(+; neutral = zeros(n),
+commutative = true)`. Cost: one pass; a non-empty `AbstractArray` chunk uses Base's pairwise `sum`.
 """
 struct Sum end
 
@@ -14,7 +16,8 @@ struct Sum end
     Prod()
 
 Aggregator for `prod` (CC-007): Monoid, commutative, empty input `1`. `neutral(Prod(), T) = one(T)`.
-Cost: one pass; a non-empty `AbstractArray` chunk uses Base's `prod`.
+Elements must be scalars (numbers): the accumulator starts at `1`, so vector or matrix elements
+throw a `MethodError`; use `ReduceM(*; neutral = …)` for those. Cost: one pass; a non-empty `AbstractArray` chunk uses Base's `prod`.
 """
 struct Prod end
 

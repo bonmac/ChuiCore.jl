@@ -104,6 +104,17 @@ end
     throw(ArgumentError("$(repr(tag)) is declared Is$class() but defines no method ChuiCore.$op($(repr(tag)), …)."))
 end
 
+@noinline function _mismatch(op::Symbol, a, b)
+    A, B = typeof(a), typeof(b)
+    throw(
+        ArgumentError(
+            "ChuiCore.$op has no instance method for a $A with a $B (tags " *
+                "$(repr(constructorclass(A))) and $(repr(constructorclass(B)))): both operands must " *
+                "belong to the same constructor class.",
+        ),
+    )
+end
+
 # ---------------------------------------------------------------------------------------------
 # Value operations: dispatch through the trait of the value's tag. Instances add the method with
 # the `Is…` style first; the `Not…` method throws an `ArgumentError`.
@@ -125,11 +136,15 @@ fmap(::NotFunctor, f, x) = _notinstance(x, :Functor)
 
 Applicative apply (Haskell `<*>`): applies the functions held by `ff` to the values held by `fx`.
 Dispatches on `ff`'s tag: `ap(ApplicativeStyle(constructorclass(typeof(ff))), ff, fx)`. A type
-that is not an Applicative throws an `ArgumentError`. Trait dispatch is free; for `Array` the
+that is not an Applicative throws an `ArgumentError`, and so do operands of two different classes
+(`ap([f], Some(1))`). Trait dispatch is free; for `Array` the
 result allocates one `Vector` of `length(ff) * length(fx)` elements.
 """
 ap(ff, fx) = ap(ApplicativeStyle(constructorclass(typeof(ff))), ff, fx)
 ap(::NotApplicative, ff, fx) = _notinstance(ff, :Applicative)
+# Both operands' instance methods are typed, so any other pairing (two different classes) lands
+# here instead of in a `MethodError` (phase-2 review nit N5).
+ap(::IsApplicative, ff, fx) = _mismatch(:ap, ff, fx)
 
 """
     chain(f, m)
@@ -147,10 +162,12 @@ chain(::NotMonad, f, m) = _notinstance(m, :Monad)
 
 The Alternative choice (Haskell `<|>`), a monoid with identity [`zeroalt`](@ref)`(tag)`: for
 Maybe the first non-`nothing`, for `Array` `vcat(a, b)`. Dispatches on `a`'s tag; a type that is
-not an Alternative throws an `ArgumentError`. Trait dispatch is free.
+not an Alternative throws an `ArgumentError`, and so do operands of two different classes
+(`alt([1], Some(1))`). Trait dispatch is free.
 """
 alt(a, b) = alt(AlternativeStyle(constructorclass(typeof(a))), a, b)
 alt(::NotAlternative, a, b) = _notinstance(a, :Alternative)
+alt(::IsAlternative, a, b) = _mismatch(:alt, a, b)
 
 """
     contramap(f, p)
