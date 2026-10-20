@@ -24,8 +24,29 @@ as with Accessors.
 
 **Cost:** with the property name in the type (`Lens{:a}()`, `Lens(Val(:a))`, a literal in
 `@lens`), get is one field access and set is one constructor call: type-stable, 0 bytes, no
-dynamic dispatch. `Lens(:a)` with a runtime `Symbol` is type-unstable unless the compiler
+dynamic dispatch (about 2–3 ns either way, BenchmarkTools medians on Julia 1.10.12 and 1.13.2,
+Apple silicon, loaded machine, 2026-10-20; indicative). `Lens(:a)` with a runtime `Symbol` is type-unstable unless the compiler
 constant-folds the symbol; it is not the default form.
+
+```jldoctest
+julia> using ChuiCore: Lens
+
+julia> struct Point; x::Int; y::Int; end
+
+julia> p = Point(1, 2);
+
+julia> Lens{:x}()(p)
+1
+
+julia> ChuiCore.set(p, Lens{:x}(), 10)
+Point(10, 2)
+
+julia> ChuiCore.modify(v -> v + 1, (a = 1, b = 2), Lens(:b))
+(a = 1, b = 3)
+
+julia> p                                  # never mutated
+Point(1, 2)
+```
 """
 struct Lens{L}
     function Lens{L}() where {L}
@@ -55,7 +76,36 @@ new value and never mutates the input:
 `IndexLens(1, 2)` focuses `x[1, 2]`.
 
 **Cost:** get is one `getindex`. Set on a `Tuple` or `NamedTuple` rebuilds it (0 bytes when the
-index is a constant); on an array or dictionary it allocates a full copy, O(length).
+index is a constant); on an array or dictionary it allocates a full copy, O(length) (for a
+1,000-element `Vector{Int}`: 3 allocations, 8,256 bytes on Julia 1.13.2; 1 allocation,
+8,192 bytes on 1.10.12).
+
+```jldoctest
+julia> using ChuiCore: IndexLens
+
+julia> IndexLens(2)((10, 20, 30))
+20
+
+julia> ChuiCore.set((10, 20, 30), IndexLens(2), 99)
+(10, 99, 30)
+
+julia> v = [1, 2, 3];
+
+julia> ChuiCore.set(v, IndexLens(1), 0.5)   # a widened copy
+3-element Vector{Float64}:
+ 0.5
+ 2.0
+ 3.0
+
+julia> v
+3-element Vector{Int64}:
+ 1
+ 2
+ 3
+
+julia> ChuiCore.set((a = 1, b = 2), IndexLens(:b), 5)
+(a = 1, b = 5)
+```
 """
 struct IndexLens{I <: Tuple}
     indices::I
@@ -84,6 +134,32 @@ otherwise. A prism composes with lenses through `∘`/`⨟` for `set`/`modify`.
 **Cost:** one call of `match` (plus one of `build` for `set`/`modify`); a variant prism's match
 is one `isa` test, type-stable, 0 bytes. `set`/`modify` return a `Union` of the input's type and
 `build`'s result type.
+
+```jldoctest
+julia> using ChuiCore: Prism, preview, review
+
+julia> struct Circle; r::Float64; end
+
+julia> struct Square; side::Float64; end
+
+julia> const Shape = Union{Circle, Square};
+
+julia> pc = Prism(Circle);
+
+julia> preview(pc, Circle(1.0))
+Some(Circle(1.0))
+
+julia> preview(pc, Square(2.0)) === nothing
+true
+
+julia> ChuiCore.modify(c -> Circle(2c.r), Square(2.0), pc)   # not the case: unchanged
+Square(2.0)
+
+julia> pos = Prism(x -> x > 0 ? Some(x) : nothing, identity);   # a hand-written prism
+
+julia> preview(pos, -3) === nothing
+true
+```
 """
 struct Prism{M, B}
     match::M
@@ -103,7 +179,17 @@ Prism(::Type{T}) where {T} = Prism(_VariantMatch{T}(), _VariantBuild{T}())
 
 `Some(v)` with the focus `v` when `x` is the prism's case, else `nothing`.
 
-**Cost:** one call of the prism's `match`.
+**Cost:** one call of the prism's `match` (for a variant prism, one `isa` test, 0 bytes).
+
+```jldoctest
+julia> using ChuiCore: Prism, preview
+
+julia> preview(Prism(Int), 3)
+Some(3)
+
+julia> preview(Prism(Int), "three") === nothing
+true
+```
 """
 preview(p::Prism, x) = p.match(x)
 
@@ -112,7 +198,21 @@ preview(p::Prism, x) = p.match(x)
 
 Build the sum value of the prism's case from the focus `v`.
 
-**Cost:** one call of the prism's `build`.
+**Cost:** one call of the prism's `build` (for a variant prism, the identity after a type check).
+
+```jldoctest
+julia> using ChuiCore: Prism, review
+
+julia> review(Prism(Int), 3)
+3
+
+julia> review(Prism(x -> x > 0 ? Some(x) : nothing, abs), -4)   # `build` is `abs`
+4
+
+julia> review(Prism(Int), 1.5)
+ERROR: ArgumentError: review: 1.5 is not a Int64
+[...]
+```
 """
 review(p::Prism, v) = p.build(v)
 
@@ -130,7 +230,21 @@ Public, never exported (ADR-0004): a bare `set` would clash with Accessors' expo
 lenses on immutable structs). A composed optic is a `ComposedFunction`, a `Function`: a function
 of yours that only passes it on is not specialized on it unless the argument has a type parameter
 (`g(x, o::O) where {O} = set(x, o, 1)`); without one, each call dispatches dynamically and
-allocates (measured on Julia 1.10.12 and 1.13.2).
+allocates (measured on Julia 1.10.12 and 1.13.2: for `@lens _.a.x` on a nested struct, through a
+`@noinline` function, 2–3 allocations and 20–40 ns without the type parameter, 0 bytes and
+about 2.5 ns with it; BenchmarkTools medians, Apple silicon, loaded machine, 2026-10-20).
+
+```jldoctest
+julia> using ChuiCore: Lens, IndexLens, @lens
+
+julia> x = (a = (b = 1, c = 2), d = [1, 2]);
+
+julia> ChuiCore.set(x, @lens(_.a.b), 10)
+(a = (b = 10, c = 2), d = [1, 2])
+
+julia> ChuiCore.set(x, Lens{:d}() ⨟ IndexLens(2), 20)   # `⨟`: outer focus first
+(a = (b = 1, c = 2), d = [1, 20])
+```
 """
 set(x, l::Lens{L}, v) where {L} = setproperties(x, NamedTuple{(L,)}((v,)))
 set(x, l::IndexLens, v) = _setindex(x, v, l.indices...)
@@ -156,7 +270,20 @@ composition containing a prism is used with `set`/`modify` only.
 
 Public, never exported (ADR-0004).
 
-**Cost:** one get, one call of `f`, one set.
+**Cost:** one get, one call of `f`, one set (per part, for a composition).
+
+```jldoctest
+julia> using ChuiCore: Lens, IndexLens, Prism
+
+julia> ChuiCore.modify(x -> 10x, (a = 1, b = 2), Lens{:b}())
+(a = 1, b = 20)
+
+julia> ChuiCore.modify(uppercase, ("x", "y"), IndexLens(1))
+("X", "y")
+
+julia> ChuiCore.modify(x -> x + 1, 1.5, Prism(Int))   # not an Int: unchanged
+1.5
+```
 """
 modify(f::F, x, l::Union{Lens, IndexLens}) where {F} = set(x, l, f(l(x)))
 function modify(f::F, x, p::Prism) where {F}
@@ -198,12 +325,28 @@ end
     @lens _.a.b[i]
 
 Build the composed optic of a chain of property accesses `_.name` and indexings `_[i, …]` on the
-placeholder `_`: `@lens _.a.b[2]` is `IndexLens(2) ∘ Lens{:b}() ∘ Lens{:a}()`. Property names
+placeholder `_`: `@lens _.a.b[2]` is `IndexLens(2) ∘ (Lens{:b}() ∘ Lens{:a}())` (the same optic
+as the left-nested `IndexLens(2) ∘ Lens{:b}() ∘ Lens{:a}()`, though not `==` to it). Property names
 become type parameters (`Lens{:a}()`); index expressions are evaluated where the macro is used
 (literals or variables; `end` and `begin` are not supported).
 
 **Cost:** none at run time beyond building the lenses (the result is the same value as writing
-the composition by hand).
+the composition by hand); the expansion happens at macro-expansion time.
+
+```jldoctest
+julia> using ChuiCore: Lens, IndexLens, @lens
+
+julia> o = @lens _.a.b[2];
+
+julia> o == IndexLens(2) ∘ (Lens{:b}() ∘ Lens{:a}())   # nested to the right
+true
+
+julia> o((a = (b = (10, 20),),))
+20
+
+julia> ChuiCore.set((a = (b = (10, 20),),), o, 99)
+(a = (b = (10, 99),),)
+```
 """
 macro lens(ex)
     steps = _lens_steps(ex)
