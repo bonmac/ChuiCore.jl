@@ -6,7 +6,9 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 ## State
 
 - Branch: `feat/phase5-docs` (worktree `.worktrees/phase5-docs`), from main 4a0ea88 (phases 1–4
-  merged). **Phase 5 (docs) implemented and committed; review: see "Review" below; not merged.**
+  merged). **Phase 5 (docs) implemented and committed; reviewer FINAL VERDICT (round 2):
+  APPROVE WITH NITS (round 1: B1, S1, S2, N1–N4, all fixed in 55e234b/0f542b8; nits N6–N9
+  open, below); not merged.**
   Plan `docs/superpowers/plans/2026-10-20-phase5-docs.md`.
 - Factory 0.2.6, package profile. Contracts binding since 2026-10-19.
 - Version still 0.0.1. **v0.1.0 is not tagged or registered**: that waits for the user (checklist
@@ -56,6 +58,17 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
    the coordinator's rule first), tagging `v0.1.0`, registering in ChuiRegistry, enabling
    `deploydocs`. The README's install section already names ChuiRegistry and the URL.
 
+## Open review nits (round 2; none blocks the merge)
+
+- N6: the `binding_conflicts` docstring example (`src/banner.jl` ~35–53) depends on `Main`'s
+  modules: it passes once per process (as CI runs it) but fails if doctests run twice in one
+  process (leftover `DocA`). Fix with unique module names; fits the follow-up banner lane.
+- N7: the law-kit tutorials use `Test.anynonpass` / `ts.results`, Test internals (fine for
+  stable-only doctests); add a note.
+- N8: the traverse-allocation evidence came from a scratch script, not in the repo.
+- N9: the schemes.jl header says costs cite `performance.md`; `hylo` and the stack-depth note
+  still quote labelled research figures.
+
 ## Deferred (with reasons)
 
 - ChuiCore's own `__init__` banner call (the brief's "In `__init__`, when `isinteractive()`"):
@@ -78,8 +91,9 @@ files) reported, were merged into `feat/phase5-docs`, and are closed.
 
 ## Evidence
 
-`subagent_mode: actual`. Julia 1.13.2 and 1.10.12, Apple M3 Pro, machine loaded. Gate outputs in
-`.lanes/evidence/` (gitignored), pasted in the lane report.
+`subagent_mode: actual`. Julia 1.13.2 and 1.10.12, Apple M3 Pro, machine loaded. Gate outputs at
+0f542b8 (clean tree) in `.lanes/evidence/{docs,tests-release,tests-lts,quality,format,guards,jet,dod}-0f542b8.txt`
+(gitignored), pasted in the lane report; the sub-lanes' measurement evidence was copied there too.
 
 ## Checks NOT run, and why
 
