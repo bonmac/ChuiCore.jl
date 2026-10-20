@@ -162,11 +162,14 @@ end
 # ---------------------------------------------------------------------------------------------
 # Errors
 
+# "an Applicative", "a Functor": the indefinite article for a class name in error messages.
+_article(class::Symbol) = first(string(class)) in "AEIOU" ? "an" : "a"
+
 @noinline function _notinstance(x, class::Symbol)
     T = typeof(x)
     throw(
         ArgumentError(
-            "$T is not a $class: ChuiCore.$(class)Style(ChuiCore.constructorclass($T)) is " *
+            "$T is not $(_article(class)) $class: ChuiCore.$(class)Style(ChuiCore.constructorclass($T)) is " *
                 "Not$class(). Register the type with ChuiCore.constructorclass and ChuiCore.$(class)Style.",
         ),
     )
@@ -174,7 +177,7 @@ end
 
 @noinline function _tagerror(style, tag, class::Symbol, op::Symbol)
     if nameof(typeof(style)) === Symbol(:Not, class)
-        throw(ArgumentError("$(repr(tag)) is not a $class tag: ChuiCore.$(class)Style($(repr(tag))) is Not$class()."))
+        throw(ArgumentError("$(repr(tag)) is not $(_article(class)) $class tag: ChuiCore.$(class)Style($(repr(tag))) is Not$class()."))
     end
     throw(ArgumentError("$(repr(tag)) is declared Is$class() but defines no method ChuiCore.$op($(repr(tag)), …)."))
 end
@@ -534,7 +537,7 @@ julia> ChuiCore.pure(ChuiCore.IdentityTag(), 1) == ChuiCore.Identity(1)
 true
 
 julia> ChuiCore.pure(ChuiCore.PairTag(), 1)
-ERROR: ArgumentError: ChuiCore.PairTag() is not a Applicative tag: ChuiCore.ApplicativeStyle(ChuiCore.PairTag()) is NotApplicative().
+ERROR: ArgumentError: ChuiCore.PairTag() is not an Applicative tag: ChuiCore.ApplicativeStyle(ChuiCore.PairTag()) is NotApplicative().
 ```
 
 Cost: the instance's constructor: no heap allocation for `Some` and `Identity` of an isbits

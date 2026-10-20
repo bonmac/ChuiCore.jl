@@ -15,5 +15,10 @@
   docstrings and `docs/src` on stable Julia; a `:quality` item fails when an owned public name
   lacks a `jldoctest` (unless listed in `docs/doctest-exemptions.md`) or a cost statement.
   Documenter joins `test/Project.toml`; Accessors, Supposition and Test join `docs/Project.toml`.
+- Error-message wording: the constructor-class errors now say "is not an Applicative",
+  "an Alternative", "an Arrow" (they said "a Applicative" etc.); message text only, the
+  exception type (`ArgumentError`) is unchanged.
+- The reference has a new internal constant `_CLASS_EXAMPLES` in `src/classes/core.jl`, used
+  only to generate the style docstrings' examples.
 - README: installation (ChuiRegistry once registered; by URL or local clone until then), a quick
   example, links.
