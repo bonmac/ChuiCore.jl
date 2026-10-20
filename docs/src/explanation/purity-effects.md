@@ -102,9 +102,9 @@ made visible in the name.
 - Marking (names, `Effects:` lines) costs nothing at run time.
 - A `Thunk` is a struct holding a function; forcing it is one call.
 - A `Lazy` allocates a cell and a lock when built; a forced read is an atomic load plus a field
-  read. Measured figures are on each docstring ([`ChuiCore.Lazy`](@ref)).
+  read. Measured figures are on each docstring ([`ChuiCore.Lazy`](@ref ChuiCore.Lazy)).
 - An interpreted free-monad program pays per instruction (an allocation per instruction plus
-  dynamic dispatch); see [`ChuiCore.Free`](@ref) and the [cost model](cost-model.md).
+  dynamic dispatch); see [`ChuiCore.Free`](@ref ChuiCore.Free) and the [cost model](cost-model.md).
 
 ## Where the rest lives
 
