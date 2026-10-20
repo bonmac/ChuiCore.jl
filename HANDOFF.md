@@ -5,60 +5,62 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 ## State
 
-- Branch: `feat/phase1-research` (worktree `.worktrees/phase1-research`), from main 06d2ae6.
-  Not merged: ★ answered; **waiting for the lead to merge**.
-- Factory 0.2.5, package profile (`.factory-version`). Contracts binding since 2026-10-19.
-- Remote: none yet.
-- Phase: **phase 1 (Research and ADRs) done and accepted.** No code changes.
-  - Research: `docs/research/` (9 notes, index in its README).
-  - ADRs 0001–0008, all Accepted 2026-10-20 (`docs/adr/README.md`).
-  - Summary spec: `docs/superpowers/specs/2026-10-20-phase1-research-design.md` (Accepted).
+- Branch: `feat/phase2-traits` (worktree `.worktrees/phase2-traits`), from main 3054d7c.
+  **Phase 2 (traits and law kits) implemented, reviewed, committed; waiting for the lead to merge.**
+- Factory 0.2.5, package profile. Contracts binding since 2026-10-19. Remote: none yet.
+- Phase 1 (Research and ADRs) done: ADRs 0001–0008 Accepted 2026-10-20.
+- Phase 2 plan: `docs/superpowers/plans/2026-10-20-phase2-traits.md` (names, tiers, clash evidence).
 
-## ★ Decisions (answered by the user, 2026-10-20; all recommendations accepted)
+## What phase 2 delivered
 
-1. **Q1 (ADR-0001):** dictionary passing (instance values) with a Holy-trait classifier; constructor
-   classes as Holy traits on owned tags. Accepted.
-2. **Q2 (ADR-0005):** the three name tiers (aggregation protocol, aggregators, transducers, optics
-   and recursion schemes are public, not exported). Accepted. Ecosystem ADR-0009 is amended in the
-   coordinator by another lane (pending).
-3. **Q3 (ADR-0004, ADR-0008):** own Lens/Prism; Accessors as an extension only; ConstructionBase as
-   a hard dependency. Accepted.
-4. **Q4 (ecosystem ADR-0007 §2):** amended to `@check record=false` plus an explicit `@test`, and a
-   planted violation on the LTS job; no upstream issue. Accepted; the coordinator lane writes it
-   (pending).
-5. **Q5 (ADR-0006):** CC-001 amended through a contract ADR (Chui-added methods stay binary; the
-   upstream fallback and a downstream closing varargs method may be variadic). Accepted; the
-   coordinator lane writes it (pending).
+- Composition: `⨟`/`opcompose` (CompositionsBase's binding), `pipe`, `papply`, `flip`, `ChuiCore.curry`.
+- Monoid family (ADR-0001 §1–2): `init`/`partial`/`combine`/`final`/`iscommutative`, `neutral`
+  (fresh per call), `default_monoid`, `AlgebraClass`, `combineall`; the CC-007 aggregators
+  (`Sum` … `MapM`, `Moments(:var | :std; corrected)`, `ReduceM(op; neutral, commutative)`).
+- Constructor classes (ADR-0001 §3): tags, `constructorclass`, 11 `*Style` traits, operations,
+  instances on Maybe/Array/Tuple/Dict/Pair/Function and owned `Identity`, `ZipVector`, `Predicate`.
+- Law kits (ADR-0007): 14 exported stubs; `ChuiCoreTestExt` and `ChuiCoreSuppositionExt`
+  (`@check record=false db=false` + `@test`); a planted violation per law under both drivers.
+- Tiers (ADR-0005): exported / public (`@compat public`) / internal; clash list checked in
+  `test/exports/` (two environments: TypeClasses 1.x cannot be installed next to ChuiCore).
+
+## Decisions taken in phase 2 (lead, 2026-10-20)
+
+1. ADR-0005 rule 2 wins over rule 3's listing: `neutral`, `curry`, `fmap`, `pure`, `ap` are public,
+   not exported (TypeClasses 1.1.0 / Functors 0.4.12 export them). Rule 3 needs a correction
+   (draft item in the lane report; ecosystem ADR-0009 lane informed by the lead).
+2. **ConstructionBase (ADR-0008) is deferred to phase 3**, when optics use it (an unused hard
+   dependency fails Aqua's stale-deps check). Do not forget it in phase 3.
 
 ## Open contract follow-ups
 
-- The PROVISIONAL items in `contracts/chui-core.md` (coordinator): CompositionsBase binding, export
-  list, typeclass trait encoding, law kits, name-conflict banner, composition helpers, the
-  transducer substrate API, recursion schemes. Each ADR's Consequences says when its item can
-  become stable. The coordinator's eco-amend lane drafts the contract text; applying it is T3
-  (the user).
-- ADR-0003 Decision 4: only `isstateless` pipelines may run per partition; proposed for the
-  contract.
+- PROVISIONAL items that phase 2 can now fill (coordinator, T3): CompositionsBase binding, export
+  list, typeclass trait encoding, law kits, composition helpers, the `Moments`/`ReduceM`
+  constructors. The lane report carries draft wording.
+- ADR-0003 Decision 4 (only `isstateless` pipelines per partition): proposed for the contract.
 
 ## Open lanes
 
 | Lane | Agent | File scope | Status | Report |
 |---|---|---|---|---|
-| phase1-research | the lead's teammate (this lane) | `docs/adr/**`, `docs/research/**`, `docs/superpowers/**`, `HANDOFF.md`, `changelog.d/phase1-research.md` | ★ answered, ADRs accepted, committed, not merged | sent to the lead |
+| phase2-traits | the lead's teammate (this lane) | `src/**`, `ext/**`, `test/**`, `Project.toml`, `docs/**`, `benchmark/**`, `HANDOFF.md`, `changelog.d/phase2-traits.md` | committed, not merged | sent to the lead |
 
-All subagents of this lane (5 researchers, 3 critics) reported and are closed.
+Sub-lanes p2-algebra and p2-classes (implementer agents) reported and are closed; their worktrees
+were removed (`scripts/lane remove`); the empty branches `feat/p2-algebra`, `feat/p2-classes`
+(at 58bad5d, no own commits) remain for the lead to delete.
 
 ## Evidence
 
-`subagent_mode: actual` (2026-10-20, Julia 1.10.12 and 1.13.2). Research runs are pasted in each
-note. Gate results are in the lane's report to the lead.
+`subagent_mode: actual`. Julia 1.13.2 and 1.10.12. Gate outputs are pasted in the lane report;
+logs under `.lanes/evidence/` (gitignored).
 
 ## Checks NOT run, and why
 
-- Unit tests, JET, Runic: no code changed in this phase.
-- Speed rankings: machines were heavily loaded during research; allocations and inference only.
+- `ci.jl contracts`: NOT RUN (waiting): ChuiCore is the root package and has no upstreams.
+- Benchmarks and TTFX budgets: phase 4.
+- Snapshot tests: nothing prints in a tested way yet.
 
 ## Next action
 
-- The lead merges this lane; then phase 2 per `docs/agent/BRIEF.md` (traits and law kits,
-  composition, monoids).
+- The lead merges `feat/phase2-traits`; then phase 3 (recursion schemes, free monads, laziness,
+  optics with ConstructionBase, transducers).
