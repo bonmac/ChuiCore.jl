@@ -12,8 +12,8 @@ changes carry migration notes.
 ## [0.0.1] - 2026-10-20
 
 First snapshot release (an ecosystem ADR-0004 0.0.x snapshot, registered in ChuiRegistry so that
-downstream Chui packages can depend on a released ChuiCore; v0.1.0 follows). Entries are in the
-order the work landed, from the scaffold through phases 1–5.
+downstream Chui packages can depend on a released ChuiCore; v0.1.0 follows). Entries are grouped
+by changelog fragment, in fragment filename order, covering the scaffold through phases 1–5.
 
 - Vendored the ecosystem factory template 0.2.1 (see `.factory-version`).
 - The `ChuiCore` package scaffold (`julia = "1.10"`), MIT license.

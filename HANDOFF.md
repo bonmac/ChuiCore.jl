@@ -14,9 +14,10 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
   that worktree); `ci.jl contracts` NOT RUN (waiting: no upstreams). Not merged.
 - Fixed before tagging (e80dce9): a fresh clone's plain `]test` on Julia 1.10 ran the
   stable-only `:doctest` item and failed. `test/runtests.jl` now decides by `STABLE_MIN = v"1.13"`
-  when `CI_STABLE` is unset, and `CI_STABLE=true`/`false` still overrides it. Fresh clones pass a
-  plain `]test` on 1.13.2 (3369/3369) and 1.10.12 (3262/3262). Evidence:
-  `.lanes/evidence/tests-e80dce9.txt`, `tests-lts-e80dce9.txt`. The factory template has the same
+  when `CI_STABLE` is unset, and `CI_STABLE=true`/`false` still overrides it. With `CI_STABLE`
+  unset, `ci.jl test` passes on 1.13.2 (3369/3369, doctests run) and 1.10.12 (3262/3262, doctests
+  skipped). Evidence (at 2e3a5b9, in this worktree): `.lanes/evidence/tests-unset-2e3a5b9.txt`,
+  `tests-lts-unset-2e3a5b9.txt` (dirty only by a CHANGELOG.md prose edit). The factory template has the same
   bug, which is the factory lane's to fix.
 - **Waiting for the user**: merge to main, push main to GitHub, tag `v0.0.1`, register in
   ChuiRegistry (steps in the release-manager report to the lead). Nothing is tagged or registered.
