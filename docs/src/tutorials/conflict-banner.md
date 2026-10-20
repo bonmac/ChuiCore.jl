@@ -189,8 +189,8 @@ The conflicts themselves remain: a silenced banner just stops reminding you to w
 - **ChuiCore's `__init__`:** a non-interactive `using ChuiCore` pays one `isinteractive()` read;
   its load time is the same as before ChuiCore had an `__init__`, and it is what ADR-0009's
   load budgets measure. An interactive load compiles and runs the banner: about 0.25–0.3 s more
-  than a non-interactive one on Julia 1.13.2 and 1.10.12 (about 0.33 s in all, over the 75 ms
-  non-interactive `load_ms` budget; ADR-0009 sets no interactive budget). A direct call from
+  than a non-interactive one on Julia 1.13.2 and 1.10.12 (about 0.33 s in all, over the
+  non-interactive `load_ms` budgets of 75 ms on 1.13 and 100 ms on 1.10; ADR-0009 sets no interactive budget). A direct call from
   `__init__` (no `invokelatest`) would cut that to about 0.1 s but would compile the banner into
   the package image (about 0.33 MB more native code) and add about 3–5 ms to *every* load on
   1.10, interactive or not (within noise on 1.13). (Fresh-process medians, Apple silicon, loaded

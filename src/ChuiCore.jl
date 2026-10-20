@@ -45,7 +45,7 @@ export test_lens_laws, test_prism_laws
 # The name-conflict banner (docs/agent/BRIEF.md): interactive sessions only, silenced by
 # CHUI_QUIET_CONFLICTS, never throws (src/banner.jl). Non-interactive loads pay one global read.
 # `invokelatest` is a deliberate inference barrier: a direct call lets the precompiled `__init__`
-# pull the whole banner into the package image (~0.3 MB of native code, about +3-5 ms on every
+# pull the whole banner into the package image (~0.33 MB of native code, about +3-5 ms on every
 # `using ChuiCore` on Julia 1.10). The price is compiling the banner in interactive sessions
 # (about 0.25-0.3 s; docs/src/tutorials/conflict-banner.md cites the measurements).
 function __init__()

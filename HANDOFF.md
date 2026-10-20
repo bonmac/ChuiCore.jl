@@ -88,14 +88,16 @@ phase5-docs and its sub-lanes are merged (a8404ca) and closed.
 
 - `__init__` (end of `src/ChuiCore.jl`): `isinteractive() && Base.invokelatest(_init_banner, stderr, @__MODULE__)`;
   `_init_banner` (`src/banner.jl`) catches any error, and guards its own `@debug` log too.
-- Why `invokelatest`: a direct call compiled the banner into the package image (+0.3 MB native
+- Why `invokelatest`: a direct call compiled the banner into the package image (+0.33 MB native
   code, about +3–5 ms on every 1.10 load). With the barrier, non-interactive load equals main's;
   the price is about 0.25–0.3 s to compile the banner in interactive sessions (interactive load
   about 0.33 s in all, outside ADR-0009, whose budgets measure non-interactive loads; direct call:
   about 0.1 s). **Lead's call** if a faster interactive banner is worth the per-load cost.
   Evidence: `.lanes/evidence/banner-init-load-{release,lts}-d150a86.txt`,
-  `.lanes/evidence/banner-init-imagesize-{release,lts}-aaf9daf.txt` (scripts beside them;
-  gitignored).
+  `.lanes/evidence/banner-init-imagesize-{release,lts}-aaf9daf.txt` (gitignored). Their `cmd:`
+  lines name scratch paths: the scripts are now `banner-init-{load,imagesize}-script.jl.txt` and
+  the direct-call variant is `banner-init-directcall.patch.txt`, all beside them (rerun recipe in
+  the patch file's header), so they are reproducible from that folder.
 - The banner fires on any interactive *load* of ChuiCore (`import ChuiCore`, or as a dependency
   of `using ChuiTypes`), where the names are not actually ambiguous in `Main`: documented, and
   silenced by `CHUI_QUIET_CONFLICTS`. **Lead's call** if it should instead be left to the
