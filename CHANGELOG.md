@@ -210,3 +210,7 @@ order the work landed, from the scaffold through phases 1–5.
   method definitions stay in `core.jl`, unchanged.
 - README: installation (ChuiRegistry once registered; by URL or local clone until then), a quick
   example, links.
+- Test harness: `test/runtests.jl` skips the version-dependent `:doctest` and `:snapshot` items
+  by Julia version (`STABLE_MIN = v"1.13"`, ecosystem ADR-0008 §3) when `CI_STABLE` is unset,
+  so a plain `]test` of a fresh clone passes on Julia 1.10 too. `CI_STABLE=true`/`false` still
+  overrides it either way, and CI is unchanged (it sets `CI_STABLE` on every job).
