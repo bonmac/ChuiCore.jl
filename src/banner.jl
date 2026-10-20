@@ -21,9 +21,34 @@ next to Base's is a conflict with `Base`.
 and every module reachable from `Main` through its submodules (e.g. `module A … end` typed at the
 REPL), except `mod` itself. Only modules loaded **before** the call are seen.
 
-Cost: one pass over the other modules per exported name (`Base.isexported` checks), so
-O(exports × loaded modules), well under a millisecond for typical sessions after compilation
-(phase 4 records the measured budget). Meant for package load, not for loops.
+Cost: one pass over the other modules per exported name (`Base.isexported` checks), plus one
+walk of `Main`'s submodules, so O(exports × loaded modules): about 34 μs and 18 KB for ChuiCore's
+36 exports against 32 loaded modules (BenchmarkTools median, Julia 1.13.2, Apple silicon,
+2026-10-20; indicative, after compilation). No budget is set for it. Meant for package load, not
+for loops.
+
+**Effects:** reads global state (the loaded modules and `Main`'s submodules), so the result
+depends on what was loaded before the call; it changes nothing.
+
+```jldoctest
+julia> module DocA; export f, only_a; f() = 1; only_a() = 0; end;
+
+julia> module DocB; export f; f() = 2; end;
+
+julia> module DocC; export sum; Base.sum(::Val{:doc}) = 1; end;   # a method on Base.sum
+
+julia> r = ChuiCore.binding_conflicts(DocA);
+
+julia> [p.first for p in r]    # `f` clashes with DocB's; `only_a` clashes with nothing
+1-element Vector{Symbol}:
+ :f
+
+julia> DocB in only(r).second
+true
+
+julia> ChuiCore.binding_conflicts(DocC)   # still Base's binding: not a conflict
+Pair{Symbol, Vector{Module}}[]
+```
 """
 function binding_conflicts(mod::Module)
     others = _other_modules(mod)
@@ -88,7 +113,34 @@ __init__() = isinteractive() && ChuiCore.conflict_banner(stderr, @__MODULE__)
 `__init__` runs once, so the banner covers only modules loaded **before** the call; a package
 loaded afterwards is not reported (call `ChuiCore.conflict_banner(stdout, Mod)` again to check).
 
-Cost: that of `binding_conflicts` plus printing.
+Cost: that of `binding_conflicts` plus printing; one environment-variable read when silenced.
+
+**Effects:** reads the environment variable `CHUI_QUIET_CONFLICTS` and the set of loaded modules
+(as `binding_conflicts`), and prints to `io` when there are conflicts.
+
+```jldoctest
+julia> module DocQ; export q; q() = 1; end;
+
+julia> module DocR; export q; q() = 2; end;
+
+julia> io = IOBuffer();
+
+julia> r = withenv("CHUI_QUIET_CONFLICTS" => nothing) do
+           ChuiCore.conflict_banner(io, DocQ)
+       end;
+
+julia> [p.first for p in r]
+1-element Vector{Symbol}:
+ :q
+
+julia> occursin("✖ q  also exported by", String(take!(io)))
+true
+
+julia> withenv("CHUI_QUIET_CONFLICTS" => "1") do
+           ChuiCore.conflict_banner(io, DocQ)
+       end === nothing
+true
+```
 """
 function conflict_banner(io::IO, mod::Module)
     lowercase(strip(get(ENV, "CHUI_QUIET_CONFLICTS", ""))) in ("1", "true") && return nothing

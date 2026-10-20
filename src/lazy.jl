@@ -11,8 +11,26 @@ force, so a side effect in `f` happens once per force. Use [`ChuiCore.Lazy`](@re
 most once.
 
 Cost: a struct holding `f` (no allocation when `f` captures nothing or only bits values and the
-`Thunk` does not escape); each `force` is one call of `f`, about 1.2–1.5 ns plus `f`'s work
-(research §5). Fully inferred: `force(Thunk(f))` has `f`'s return type.
+`Thunk` does not escape); each `force` is one call of `f`, about 1.1–1.5 ns plus `f`'s work
+(BenchmarkTools medians on Apple silicon: 1.17 / 1.54 ns on Julia 1.10.12 / 1.13.2 in the
+phase-1 research, 1.1 ns re-measured on 1.13.2 on 2026-10-20; indicative). Fully inferred:
+`force(Thunk(f))` has `f`'s return type.
+
+**Effects:** none of its own; each `force` runs `f`, so `f`'s effects happen once per force.
+
+```jldoctest
+julia> using ChuiCore: Thunk, force
+
+julia> calls = Ref(0);
+
+julia> t = Thunk(() -> (calls[] += 1; 42));
+
+julia> force(t), force(t)
+(42, 42)
+
+julia> calls[]                 # no memo: the body ran twice
+2
+```
 """
 struct Thunk{F}
     f::F
@@ -58,11 +76,43 @@ Semantics (thread-safe by default):
 For lazy *sequences*, use `Base.Iterators` (fused at compile time, no allocation); `Lazy` is for
 a shared value or structure computed on demand.
 
-Cost (indicative): construction allocates the cell and a `ReentrantLock` (a few small heap
-objects). A forced read is one acquire load plus a field read, no allocation: 5.7–6.2 ns per
-non-inlined call in the research prototype (`median(@benchmark force(x))`), against about 2 ns for
-an unsynchronised cell that is provably racy (research §5). `force(::Lazy{T})` infers `T`. The
-first force takes the lock once.
+Cost (indicative): construction allocates the cell and a `ReentrantLock` (4 allocations,
+160 bytes, about 14 ns for a body that captures nothing, on Julia 1.13.2). A forced read is one
+acquire load plus a field read, no allocation: about 2–2.5 ns inlined and 2.5–3 ns through a
+`@noinline` call, on Julia 1.10.12 and 1.13.2 (BenchmarkTools medians, Apple silicon,
+re-measured on 2026-10-20 with the cell behind a `Ref` so the read is not constant-folded; the
+phase-1 research prototype, on a loaded machine, gave 5.7–6.2 ns). `force(::Lazy{T})` infers
+`T`. The first force takes the lock once.
+
+**Effects:** the first `force` runs the body once, under the cell's lock, and stores its value
+(or its exception) in the cell; the body's own effects happen then. Construction runs nothing.
+
+```jldoctest
+julia> using ChuiCore: Lazy, force, isforced
+
+julia> calls = Ref(0);
+
+julia> l = Lazy(() -> (calls[] += 1; 6 * 7))
+Lazy{Int64}(<unevaluated>)
+
+julia> force(l), force(l)
+(42, 42)
+
+julia> calls[]                 # memoised: the body ran once
+1
+
+julia> l
+Lazy{Int64}(42)
+
+julia> bad = Lazy{Int}(() -> error("boom"));
+
+julia> force(bad)
+ERROR: boom
+[...]
+
+julia> isforced(bad), bad      # the exception is cached
+(true, Lazy{Int64}(<threw ErrorException>))
+```
 """
 mutable struct Lazy{T, F}
     @atomic state::UInt8
@@ -85,6 +135,22 @@ rethrown). For any other value, `force(x) === x`, so code can force values that 
 lazy.
 
 Cost: see `Thunk` and `Lazy`; on a plain value it is the identity (0 ns after inlining).
+
+**Effects:** forcing a `Thunk` runs its body (every time); the first force of a `Lazy` runs its
+body once under the cell's lock and memoises the result; on any other value, none.
+
+```jldoctest
+julia> using ChuiCore: Thunk, force, @lazy
+
+julia> force(3)                # not lazy: returned as is
+3
+
+julia> force(Thunk(() -> 1 + 1))
+2
+
+julia> force(@lazy 2^10)
+1024
+```
 """
 force(x) = x
 force(t::Thunk) = t.f()
@@ -132,7 +198,21 @@ end
 Whether the body of `l` has run, whether it returned a value or threw (a cached exception counts
 as forced). Never forces.
 
-Cost: one atomic load.
+Cost: one atomic load (about 2 ns, Julia 1.13.2, Apple silicon; indicative).
+
+```jldoctest
+julia> using ChuiCore: Lazy, force, isforced
+
+julia> l = Lazy(() -> 1);
+
+julia> isforced(l)
+false
+
+julia> force(l);
+
+julia> isforced(l)
+true
+```
 """
 isforced(l::Lazy) = (@atomic :acquire l.state) in (_DONE, _FAILED)
 
@@ -144,6 +224,22 @@ isforced(l::Lazy) = (@atomic :acquire l.state) in (_DONE, _FAILED)
 [`ChuiCore.force`](@ref).
 
 Cost: as `Lazy`; `T` comes from inference of `expr`.
+
+**Effects:** as `Lazy`: nothing runs at `@lazy`; the first `force` evaluates `expr` once, under
+the cell's lock, and memoises it.
+
+```jldoctest
+julia> using ChuiCore: force, isforced, @lazy
+
+julia> x = @lazy sum(1:100)
+Lazy{Int64}(<unevaluated>)
+
+julia> force(x)
+5050
+
+julia> isforced(x)
+true
+```
 """
 macro lazy(ex)
     return :(Lazy(() -> $(esc(ex))))
@@ -176,6 +272,25 @@ it costs nothing at run time.
 
 Cost: each deferred operation allocates one new `Lazy` cell; forcing a chain of `n` operations
 forces `n` cells (stack depth `n`).
+
+```jldoctest
+julia> using ChuiCore: LazyTag, force, isforced, @lazy
+
+julia> base = @lazy 10;
+
+julia> y = ChuiCore.fmap(x -> x + 1, base);
+
+julia> z = chain(x -> @lazy(2x), y);
+
+julia> isforced(base)          # nothing has run yet
+false
+
+julia> force(z)
+22
+
+julia> force(ChuiCore.pure(LazyTag(), 5))
+5
+```
 """
 struct LazyTag end
 
