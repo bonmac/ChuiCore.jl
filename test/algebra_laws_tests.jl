@@ -37,7 +37,10 @@ end
     using Test, Statistics
     using Supposition: Data
     const CC = ChuiCore
-    floats = Data.Vectors(Data.Floats{Float64}(; infs = false, nans = false, minimum = -1.0e6, maximum = 1.0e6); max_size = 20)
+    # CC-004's tolerance holds only without intermediate overflow or underflow: arbitrary floats
+    # in [-1e6, 1e6] include subnormal-squaring values (Moments(:std) on [0.0, 2.2e-162] failed
+    # "split invariance"), so draw multiples of 2^-10 instead.
+    floats = Data.Vectors(map(x -> x / 1024, Data.Integers(-10^9, 10^9)); max_size = 20)
     small = Data.Vectors(map(Float64, Data.Integers(-3, 3)); max_size = 12)
     ints = Data.Vectors(Data.Integers(-1000, 1000); max_size = 20)
     bools = Data.Vectors(Data.Booleans(); max_size = 20)
