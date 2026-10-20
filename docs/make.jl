@@ -23,6 +23,7 @@ makedocs(;
             "Optics" => "optics.md",
             "Laziness and the banner" => "lazy.md",
         ],
+        "Performance" => "performance.md",
     ],
     REMOTE_KW...,
 )

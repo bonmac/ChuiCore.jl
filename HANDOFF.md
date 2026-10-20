@@ -5,73 +5,62 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 ## State
 
-- Branch: `feat/phase3-schemes` (worktree `.worktrees/phase3-schemes`), from main 20f5c14 (phases
-  1–2 merged). **Phase 3 implemented and committed; reviewer FINAL VERDICT: APPROVE WITH NITS
-  (S1–S4 and the nits fixed; the final re-review at 8f8a9ca leaves only N6, a factory-tooling note:
-  `dod.jl`/`lane audit` use the stale `origin/main`); waiting for the lead to merge.** Plan: `docs/superpowers/plans/2026-10-20-phase3-schemes.md`.
+- Branch: `feat/phase4-perf` (worktree `.worktrees/phase4-perf`), from main b4f1ca3 (phases 1–3
+  merged). **Phase 4 (performance pass) implemented and committed; under review; not merged.**
+  Spec `docs/superpowers/specs/2026-10-20-phase4-perf-design.md`, plan
+  `docs/superpowers/plans/2026-10-20-phase4-perf.md`.
 - Factory 0.2.5, package profile. Contracts binding since 2026-10-19.
-- Remote: `origin/main` is at 06d2ae6, behind local main, so `dod.jl` and `lane audit` count
-  phases 1–2 too until main is pushed (run `dod.jl --base 20f5c14` meanwhile).
+- Remote: `origin/main` is behind local main, so `dod.jl` and `lane audit` count earlier phases
+  until main is pushed (run `dod.jl --base b4f1ca3` meanwhile).
 
-## What phase 3 delivered (all public, not exported, except the two lens/prism kits)
+## What phase 4 delivered
 
-- Transducer substrate (ADR-0003; R3, R7): `Map`, `Filter`, `MapCat`, `Take`, `TakeWhile`, `Scan`,
-  `Partition`, `Composed`; `asrf`, `R`, `Bottom`; `start`/`next`/`complete`; `Reduced`;
-  fail-closed `isstateless`; `foldxl`, `foldparts`, `foldxt`, `aggregate`.
-- Recursion schemes (R6): `Fix`, `project`, `cata` … `futu`, `cataM`/`anaM`/`hyloM`, over own
-  node types without rewrapping. À la carte `Coproduct`/`Inl`/`Inr`/`inj`/`prj`; freer monad
-  `Free`/`Pure`/`Impure`/`liftF`/`interpret`/`cohandler`/`foldfree`.
-- Optics (ADR-0004, ADR-0008): `Lens`, `IndexLens`, `@lens`, `Prism`, `preview`, `review`, `set`,
-  `modify`; kits `test_lens_laws`, `test_prism_laws` (exported); ConstructionBase 1.6 is a hard
-  dependency; `ChuiCoreAccessorsExt`.
-- Laziness (R5): `Thunk`, thread-safe memoised `Lazy`, `force`, `isforced`, `@lazy`, `LazyTag`.
-- Banner (R9): `binding_conflicts`, `conflict_banner`.
-- Phase-2 nits: N5 fixed (ArgumentError on mismatched `ap`/`alt`; instance methods must type the
-  style argument), N2 documented; N4 carried (a tag-level trait cannot see tuple length).
+- JET: clean at the `ci.jl jet` strictness (already clean at b4f1ca3; no source change needed).
+- ADR-0009 (Proposed): allocation budgets (tests, `test/perf_allocs_tests.jl`), per-version time
+  budgets (`benchmark/budgets.toml`, `benchmark/run.jl --check`), load/TTFX/precompile budgets
+  (`benchmark/ttfx.jl --check`), the benchmark set (`benchmark/benchmarks.jl`).
+- ADR-0010 (Proposed): hard dependency PrecompileTools `"1.2"`; workload `src/precompile.jl`;
+  `test/precompile_tests.jl` (`:slow`) checks the TTFX workload compiles no ChuiCore method.
+- Load + first call: 230 → 47 ms (1.13.2), 247 → 69 ms (1.10.12); load +23–26 ms; precompile
+  0.84 → 1.6 s / 0.88 → 1.4 s. All budgets met on both versions. Results and losses:
+  `docs/src/performance.md` (new docs page).
 
-## Decisions taken in phase 3 (lane, recorded in the plan)
+## Decisions waiting (★, for the lead to take to the user)
 
-1. Recursion-scheme encoding (R6 left it open): `project(x) = x` by default, so downstream node
-   types are their own base functor; `Fix` (field `Any`) for generic code; unfolds take `embed`.
-2. À la carte names are Swierstra's `inj`/`prj` (`project` is the schemes'); freer encoding.
-3. `Lazy` caches a thrown exception (at most one evaluation); a self-forcing body throws.
-4. `R` and `Bottom` are public (downstream transducers dispatch on `R{<:T}`).
-5. `foldparts` waits for every task; results after a stop are discarded.
-6. A root `JuliaTestItems.toml` excludes `.lanes/` and `.worktrees/` from the test-item search
-   (review S3; the lead approved the file 2026-10-20 and is seeding it in the factory template).
+1. Accept ADR-0010 (a new hard dependency, PrecompileTools). Recommendation: accept.
+2. ADR-0009's policy items: the 3× (1-2-5) time-budget multiplier, the 3.0 s precompile budget,
+   the one-way "only tighten" rule, and keeping `run.jl --check`/`ttfx.jl --check`/`test -- slow`
+   out of CI (run at release and by engine-changing lanes). Recommendation: accept as written.
 
 ## Deferred (with reasons)
 
-- `ChuiCoreTransducersExt` (ADR-0003 §8): needs Transducers.jl (20 transitive deps) in the test
-  environment, and no consumer asks for it yet.
-- Prisms inside *Accessors* compositions: needs Accessors' non-public `OpticStyle`/`ModifyBased`.
-- `eduction`, a stack-safe iterative `cata`, a typed `Cofree`: not in v1.
-
-## Open contract follow-ups (for the lead; drafts in the lane report)
-
-- The PROVISIONAL "transducer substrate", "recursion schemes", "free monads", "laziness",
-  "optics" and "name-conflict banner" items now have names; ADR-0012 P2's obligation can become an
-  entry (v1 transducer set fixed).
+- `ChuiCoreTransducersExt` (ADR-0003 §8): still deferred; needs Transducers.jl (≈20 transitive
+  deps) in the test environment and no consumer asks for it. Not a performance item.
+- Prisms inside *Accessors* compositions; `eduction`, a stack-safe `cata`, a typed `Cofree`.
+- Factory nit N6 (`dod.jl`/`lane audit` use the stale `origin/main`): factory lane's.
 
 ## Open lanes
 
 | Lane | Agent | File scope | Status | Report |
 |---|---|---|---|---|
-| phase3-schemes | the lead's teammate (this lane) | `src/**`, `ext/**`, `test/**`, `Project.toml`, `docs/**`, `benchmark/**`, `HANDOFF.md`, `changelog.d/phase3-schemes.md`, `.gitignore` | committed, not merged | sent to the lead |
+| phase4-perf | the lead's teammate (this lane) | `src/**`, `ext/**`, `test/**`, `Project.toml`, `docs/**`, `benchmark/**`, `HANDOFF.md`, `changelog.d/phase4-perf.md`, `JuliaTestItems.toml` | committed, in review | to the lead |
 
-Sub-lanes p3-xf, p3-schemes, p3-optics, p3-lazy (implementer agents) worked in scratch copies under
-`.lanes/scratch/`; all reported, were merged by the lane lead and are closed; the copies were deleted.
+Sub-lane p4-allocs (implementer, `test/perf_allocs_tests.jl` only) reported and is closed; a
+critic reviewed ADR-0009/0010 (ACCEPT WITH CHANGES, findings applied) and is closed.
 
 ## Evidence
 
-`subagent_mode: actual`. Julia 1.13.2 and 1.10.12. Gate outputs are under `.lanes/evidence/`
-(gitignored) and pasted in the lane report.
+`subagent_mode: actual`. Julia 1.13.2 and 1.10.12, Apple M3 Pro, machine loaded (load average
+8–21). Gate and measurement outputs under `.lanes/evidence/` (gitignored), pasted in the lane
+report.
 
 ## Checks NOT run, and why
 
 - `ci.jl contracts`: NOT RUN (waiting): ChuiCore is the root package and has no upstreams.
-- Benchmarks, TTFX and load-time budgets: phase 4.
+- `ci.jl bench` (HEAD vs merge base): the merge base has no `benchmark/benchmarks.jl`, so it
+  reports nothing to compare; AirspeedVelocity was run instead (main vs branch, 1.13.2).
+- Measurements on a quiet machine or on CI runners: none available.
 
 ## Next action
 
-- The lead merges `feat/phase3-schemes`; then phase 4 (performance pass).
+- The reviewer's FINAL verdict, then the lead merges `feat/phase4-perf` after the ★ answers.

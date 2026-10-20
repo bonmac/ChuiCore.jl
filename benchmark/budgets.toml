@@ -1,0 +1,117 @@
+# ChuiCore performance budgets (ADR-0009). Budgets may only tighten without an ADR amendment.
+#
+# [ttfx.<julia major.minor>]: warm medians of fresh processes, checked by
+#   julia benchmark/ttfx.jl --check            (milliseconds)
+# [time.<julia major.minor>]: median time of each SUITE entry of benchmark/benchmarks.jl, checked by
+#   julia benchmark/run.jl --check             (nanoseconds)
+# Versions without a table of their own use `default` (ttfx) or "1.10" (time).
+# Each time budget is 3x that version's median at main b4f1ca3 (Apple M3 Pro, load average 8-17),
+# rounded up to 1-2-5 (so 3x to 7.5x), with a 10 ns floor for call-overhead entries. The comment
+# after each row is that baseline in ns. Allocation budgets are tests: test/perf_allocs_tests.jl.
+
+[ttfx."1.13"]
+load_ms = 75
+load_first_call_ms = 150
+precompile_ms = 3000
+
+[ttfx."1.10"]
+load_ms = 100
+load_first_call_ms = 175
+precompile_ms = 3000
+
+[ttfx.default]           # other versions (1.11, 1.12, pre): the LTS column
+load_ms = 100
+load_first_call_ms = 175
+precompile_ms = 3000
+
+[time."1.13"]
+"aggregators/(\"combine+final\", \"Count\")" = 10                  # 2.1
+"aggregators/(\"combine+final\", \"Extrema\")" = 10                # 2.0
+"aggregators/(\"combine+final\", \"Last\")" = 10                   # 2.0
+"aggregators/(\"combine+final\", \"Max\")" = 10                    # 2.0
+"aggregators/(\"combine+final\", \"Mean\")" = 10                   # 2.0
+"aggregators/(\"combine+final\", \"Sum\")" = 10                    # 2.0
+"aggregators/(\"combine+final\", \"Var\")" = 10                    # 2.3
+"aggregators/(\"partial\", \"Count\", \"SubArray\")" = 10          # 2.0
+"aggregators/(\"partial\", \"Count\", \"Vector{Float64}\")" = 10   # 2.0
+"aggregators/(\"partial\", \"Count\", \"generator\")" = 10         # 3.0
+"aggregators/(\"partial\", \"Extrema\", \"SubArray\")" = 5000      # 808.0
+"aggregators/(\"partial\", \"Extrema\", \"Vector{Float64}\")" = 5000 # 952.9
+"aggregators/(\"partial\", \"Extrema\", \"generator\")" = 5000     # 765.4
+"aggregators/(\"partial\", \"Last\", \"SubArray\")" = 10           # 2.5
+"aggregators/(\"partial\", \"Last\", \"Vector{Float64}\")" = 10    # 2.3
+"aggregators/(\"partial\", \"Last\", \"generator\")" = 10          # 2.5
+"aggregators/(\"partial\", \"Max\", \"SubArray\")" = 2000          # 550.5
+"aggregators/(\"partial\", \"Max\", \"Vector{Float64}\")" = 5000   # 731.9
+"aggregators/(\"partial\", \"Max\", \"generator\")" = 5000         # 732.3
+"aggregators/(\"partial\", \"Mean\", \"SubArray\")" = 5000         # 821.4
+"aggregators/(\"partial\", \"Mean\", \"Vector{Float64}\")" = 5000  # 842.3
+"aggregators/(\"partial\", \"Mean\", \"generator\")" = 50000       # 8100.0
+"aggregators/(\"partial\", \"Sum\", \"SubArray\")" = 5000          # 821.3
+"aggregators/(\"partial\", \"Sum\", \"Vector{Float64}\")" = 5000   # 1660.0
+"aggregators/(\"partial\", \"Sum\", \"Vector{Int}\")" = 5000       # 987.0
+"aggregators/(\"partial\", \"Sum\", \"generator\")" = 50000        # 8400.0
+"aggregators/(\"partial\", \"Var\", \"SubArray\")" = 100000        # 22710.0
+"aggregators/(\"partial\", \"Var\", \"Vector{Float64}\")" = 200000 # 53420.0
+"aggregators/(\"partial\", \"Var\", \"generator\")" = 200000       # 46000.0
+"compose/flip" = 10                                                # 1.2
+"compose/papply" = 10                                              # 2.0
+"compose/pipe (3 functions)" = 10                                  # 1.2
+"compose/⨟ (3 functions)" = 10                                     # 1.1
+"schemes/(\"cata\", \"Fix\")" = 500000                             # 79290.0 (1023 nodes)
+"schemes/(\"cata\", \"own node type\")" = 100000                   # 18000.0
+"schemes/(\"para\", \"own node type\")" = 500000                   # 161480.0
+"transducers/(\"aggregate\", \"Mean\", \"4 parts\")" = 100000      # 21540.0
+"transducers/(\"aggregate\", \"Sum\", \"4 parts\")" = 100000       # 21750.0
+"transducers/(\"foldxl\", \"MapCat\")" = 50000                     # 15420.0
+"transducers/(\"foldxl\", \"Map⨟Filter\", \"SubArray\")" = 50000   # 7260.0
+"transducers/(\"foldxl\", \"Map⨟Filter\", \"Vector\")" = 50000     # 14000.0
+"transducers/(\"foldxl\", \"Partition(100)\")" = 200000            # 44080.0
+"transducers/(\"foldxl\", \"Scan\")" = 50000                       # 8150.0
+"transducers/(\"foldxl\", \"Take(N/2)\")" = 20000                  # 3690.0
+
+[time."1.10"]
+"aggregators/(\"combine+final\", \"Count\")" = 10                  # 1.4
+"aggregators/(\"combine+final\", \"Extrema\")" = 10                # 1.4
+"aggregators/(\"combine+final\", \"Last\")" = 10                   # 1.4
+"aggregators/(\"combine+final\", \"Max\")" = 10                    # 1.4
+"aggregators/(\"combine+final\", \"Mean\")" = 10                   # 1.4
+"aggregators/(\"combine+final\", \"Sum\")" = 10                    # 1.4
+"aggregators/(\"combine+final\", \"Var\")" = 10                    # 1.7
+"aggregators/(\"partial\", \"Count\", \"SubArray\")" = 10          # 1.4
+"aggregators/(\"partial\", \"Count\", \"Vector{Float64}\")" = 10   # 1.4
+"aggregators/(\"partial\", \"Count\", \"generator\")" = 10         # 1.4
+"aggregators/(\"partial\", \"Extrema\", \"SubArray\")" = 10000     # 2880.0
+"aggregators/(\"partial\", \"Extrema\", \"Vector{Float64}\")" = 20000 # 5760.0
+"aggregators/(\"partial\", \"Extrema\", \"generator\")" = 20000    # 5770.0
+"aggregators/(\"partial\", \"Last\", \"SubArray\")" = 10           # 2.0
+"aggregators/(\"partial\", \"Last\", \"Vector{Float64}\")" = 10    # 1.4
+"aggregators/(\"partial\", \"Last\", \"generator\")" = 10          # 1.4
+"aggregators/(\"partial\", \"Max\", \"SubArray\")" = 10000         # 2790.0
+"aggregators/(\"partial\", \"Max\", \"Vector{Float64}\")" = 20000  # 5580.0
+"aggregators/(\"partial\", \"Max\", \"generator\")" = 20000        # 5570.0
+"aggregators/(\"partial\", \"Mean\", \"SubArray\")" = 5000         # 675.3
+"aggregators/(\"partial\", \"Mean\", \"Vector{Float64}\")" = 5000  # 1370.0
+"aggregators/(\"partial\", \"Mean\", \"generator\")" = 50000       # 7520.0
+"aggregators/(\"partial\", \"Sum\", \"SubArray\")" = 5000          # 674.4
+"aggregators/(\"partial\", \"Sum\", \"Vector{Float64}\")" = 5000   # 1360.0
+"aggregators/(\"partial\", \"Sum\", \"Vector{Int}\")" = 5000       # 1090.0
+"aggregators/(\"partial\", \"Sum\", \"generator\")" = 50000        # 7530.0
+"aggregators/(\"partial\", \"Var\", \"SubArray\")" = 100000        # 21500.0
+"aggregators/(\"partial\", \"Var\", \"Vector{Float64}\")" = 200000 # 43500.0
+"aggregators/(\"partial\", \"Var\", \"generator\")" = 200000       # 43040.0
+"compose/flip" = 10                                                # 0.8
+"compose/papply" = 10                                              # 1.4
+"compose/pipe (3 functions)" = 10                                  # 0.8
+"compose/⨟ (3 functions)" = 10                                     # 0.8
+"schemes/(\"cata\", \"Fix\")" = 500000                             # 69750.0 (1023 nodes)
+"schemes/(\"cata\", \"own node type\")" = 50000                    # 14670.0
+"schemes/(\"para\", \"own node type\")" = 1000000                  # 166750.0
+"transducers/(\"aggregate\", \"Mean\", \"4 parts\")" = 100000      # 22790.0
+"transducers/(\"aggregate\", \"Sum\", \"4 parts\")" = 500000       # 67790.0
+"transducers/(\"foldxl\", \"MapCat\")" = 50000                     # 15380.0
+"transducers/(\"foldxl\", \"Map⨟Filter\", \"SubArray\")" = 20000   # 3780.0
+"transducers/(\"foldxl\", \"Map⨟Filter\", \"Vector\")" = 20000     # 6500.0
+"transducers/(\"foldxl\", \"Partition(100)\")" = 200000            # 37540.0
+"transducers/(\"foldxl\", \"Scan\")" = 50000                       # 7880.0
+"transducers/(\"foldxl\", \"Take(N/2)\")" = 20000                  # 3460.0
