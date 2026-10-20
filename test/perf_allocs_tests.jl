@@ -52,6 +52,7 @@
     own(d) = d == 0 ? PLit(1) : PAdd(own(d - 1), own(d - 1))
     fix(d) = d == 0 ? CC.Fix(PLit(1)) : CC.Fix(PAdd(fix(d - 1), fix(d - 1)))
     nnodes(d) = 2^(d + 1) - 1
+    # end of PerfAllocs: benchmark/allocs.jl extracts the module body up to this line.
 end
 
 @testitem "perf allocs: built-in aggregators partial/combine/final are 0 B" tags = [:unit] setup = [PerfAllocs] begin

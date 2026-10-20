@@ -6,7 +6,9 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 ## State
 
 - Branch: `feat/phase4-perf` (worktree `.worktrees/phase4-perf`), from main b4f1ca3 (phases 1–3
-  merged). **Phase 4 (performance pass) implemented and committed; under review; not merged.**
+  merged). **Phase 4 (performance pass) implemented and committed (64a13bb, fc44fed review fixes,
+  then the N7 nit); reviewer FINAL VERDICT: APPROVE WITH NITS (B1, S1, S2, N1–N7 fixed); waiting
+  for the lead to merge after the ★ answers.**
   Spec `docs/superpowers/specs/2026-10-20-phase4-perf-design.md`, plan
   `docs/superpowers/plans/2026-10-20-phase4-perf.md`.
 - Factory 0.2.5, package profile. Contracts binding since 2026-10-19.
@@ -43,7 +45,7 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 | Lane | Agent | File scope | Status | Report |
 |---|---|---|---|---|
-| phase4-perf | the lead's teammate (this lane) | `src/**`, `ext/**`, `test/**`, `Project.toml`, `docs/**`, `benchmark/**`, `HANDOFF.md`, `changelog.d/phase4-perf.md`, `JuliaTestItems.toml` | committed, in review | to the lead |
+| phase4-perf | the lead's teammate (this lane) | `src/**`, `ext/**`, `test/**`, `Project.toml`, `docs/**`, `benchmark/**`, `HANDOFF.md`, `changelog.d/phase4-perf.md`, `JuliaTestItems.toml` | committed, approved with nits (fixed), not merged | to the lead |
 
 Sub-lane p4-allocs (implementer, `test/perf_allocs_tests.jl` only) reported and is closed; a
 critic reviewed ADR-0009/0010 (ACCEPT WITH CHANGES, findings applied) and is closed.
@@ -63,4 +65,4 @@ report.
 
 ## Next action
 
-- The reviewer's FINAL verdict, then the lead merges `feat/phase4-perf` after the ★ answers.
+- The lead takes the two ★ items to the user, then merges `feat/phase4-perf`.

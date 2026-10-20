@@ -15,7 +15,8 @@ using ChuiCore
 const CC = ChuiCore
 let src = read(joinpath(ROOT, "test", "perf_allocs_tests.jl"), String)
     i = findfirst("@testmodule PerfAllocs begin", src)
-    j = findfirst("\nend\n", src)
+    j = findfirst("# end of PerfAllocs", src)   # a sentinel line in the test file, not the first `end`
+    j === nothing && error("allocs.jl: the `# end of PerfAllocs` sentinel is missing from test/perf_allocs_tests.jl")
     Core.eval(Main, Meta.parse("module PerfAllocs\n" * src[(last(i) + 1):first(j)] * "\nend"))
 end
 const PA = PerfAllocs
