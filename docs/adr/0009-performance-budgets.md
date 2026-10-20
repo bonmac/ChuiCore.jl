@@ -16,7 +16,8 @@
 - Measurements at main b4f1ca3 (Apple M3 Pro, 12 cores, **a shared machine at load average
   8–21**: absolute numbers are inflated, ratios are what to trust; results and commands in
   `docs/src/performance.md`):
-  - Allocations (one named function per case, as `test/perf_allocs_tests.jl` measures; a generic
+  - Allocations (`benchmark/allocs.jl`: one zero-argument closure per case over local values,
+    as `test/perf_allocs_tests.jl` measures; a generic
     `@allocated f(args...)` helper reports a spurious 48–96 B when `args` holds functions):
     every built-in aggregator's `partial` (Vector, SubArray, generator), `combine`, `final`: 0 B
     on 1.13.2 and 1.10.12; `foldxl` over vectors and views with `Map`, `Filter`, `MapCat`, `Take`,

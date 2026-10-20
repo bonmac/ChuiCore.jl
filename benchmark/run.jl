@@ -1,7 +1,8 @@
 #!/usr/bin/env julia
 # run.jl: run benchmark/benchmarks.jl once on this checkout and print a table (median time,
-# minimum time, allocations, memory) for docs/ and HANDOFF.md (ADR-0009). The regression gate is
-# AirspeedVelocity in CI and `julia scripts/ci.jl bench` locally; this script only reports.
+# minimum time, allocations, memory) for docs/ and HANDOFF.md (ADR-0009). Without `--check` it
+# only reports; with it, it is the budget gate of ADR-0009 §2. The regression gate between commits
+# is AirspeedVelocity in CI and `julia scripts/ci.jl bench` locally.
 #
 #   julia +release benchmark/run.jl [--out FILE] [--check]
 #   julia +lts     benchmark/run.jl [--out FILE] [--check]
@@ -63,6 +64,15 @@ if "--check" in ARGS
     for name in sort!(collect(setdiff(keys(budget), suite_keys)))
         global ok = false
         println(io, "| ", name, " | — | ", ns(budget[name]), " | NOT IN SUITE |")
+    end
+    # Every version's table must cover the same keys, so a row missing for the other Julia
+    # version fails here too, not only when someone runs that version.
+    for (ver, tbl) in sort!(collect(tables); by = first)
+        missing_rows = sort!(collect(setdiff(suite_keys, keys(tbl))))
+        extra_rows = sort!(collect(setdiff(keys(tbl), suite_keys)))
+        isempty(missing_rows) && isempty(extra_rows) && continue
+        global ok = false
+        println(io, "table [time.\"", ver, "\"]: missing ", missing_rows, ", not in SUITE ", extra_rows)
     end
     println(io, ok ? "\nrun.jl --check: OK ($(length(rows)) benchmarks within budget)" : "\nrun.jl --check: FAILED")
 end

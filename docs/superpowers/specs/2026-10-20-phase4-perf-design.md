@@ -31,7 +31,7 @@
 |---|---|---|
 | Workload | `src/precompile.jl` | `_precompile_workload()` called from `@compile_workload`; inputs made type-opaque so entry points compile as top-level calls do |
 | Trace check | `test/precompile_tests.jl` (`:slow`) | fresh process, `--trace-compile`, no `ChuiCore.` line after the TTFX workload |
-| Allocation budgets | `test/perf_allocs_tests.jl` (`:unit`) | one named function per case; skipped under coverage |
+| Allocation budgets | `test/perf_allocs_tests.jl` (`:unit`), `benchmark/allocs.jl` (prints the numbers) | one zero-argument closure per case over local values; skipped under coverage |
 | Benchmark suite | `benchmark/benchmarks.jl`, `benchmark/Project.toml` | public API only, so it runs on the merge base |
 | Report and time budgets | `benchmark/run.jl`, `benchmark/budgets.toml` | `--check` compares medians with `[time]` |
 | TTFX | `benchmark/ttfx.jl` | fresh processes, a scratch depot stacked first, `--check` against `[ttfx.*]` |

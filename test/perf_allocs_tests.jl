@@ -62,13 +62,14 @@ end
         PA.skip_note("aggregators")
         @test_skip false
     else
-        let vf = collect(1.0:1000.0), vi = collect(1:1000), vb = isodd.(1:1000)
+        # `vb` is a BitVector, `vB` a Vector{Bool}: both are "Bool vectors" (ADR-0009 §1).
+        let vf = collect(1.0:1000.0), vi = collect(1:1000), vb = isodd.(1:1000), vB = collect(vb)
             numeric = (
                 CC.Sum(), CC.Prod(), CC.Count(), CC.Mean(), CC.Max(), CC.Min(), CC.Extrema(),
                 CC.First(), CC.Last(), CC.Moments(:var), CC.Moments(:std),
             )
             boolean = (CC.CountTrue(), CC.AnyM(), CC.AllM())
-            for (aggs, vs) in ((numeric, (vf, vi)), (boolean, (vb,)))
+            for (aggs, vs) in ((numeric, (vf, vi)), (boolean, (vb, vB)))
                 for agg in aggs, v in vs
                     w = view(v, 1:500)
                     g = (x for x in v)

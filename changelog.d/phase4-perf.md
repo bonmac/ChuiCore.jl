@@ -9,5 +9,6 @@
   precompile ≈0.84 → 1.6 s (1.13) and 0.88 → 1.4 s (1.10). `test/precompile_tests.jl` (`:slow`)
   checks that the TTFX workload compiles no ChuiCore method after load.
 - Benchmark suite `benchmark/benchmarks.jl` (a BenchmarkTools `SUITE`, runnable by
-  AirspeedVelocity and `scripts/ci.jl bench`), with `benchmark/Project.toml`; results, losses
+  AirspeedVelocity and `scripts/ci.jl bench`), with `benchmark/Project.toml`, and
+  `benchmark/allocs.jl` printing the allocation figures; results, losses
   included, in the new docs page `docs/src/performance.md`.

@@ -75,3 +75,6 @@
 
 - PrecompileTools drops Julia 1.10 support in a release ChuiCore needs, or Base gains an equivalent.
 - `using PrecompileTools` alone exceeds half of ChuiCore's load budget (≈38 ms on 1.13; today ≈25).
+- A Julia release sees through `_opaque(x) = Ref{Any}(x)[]` (forwards the value's type): the
+  workload would silently go back to inlining its entry points. Only `test/precompile_tests.jl`
+  (`:slow`, not in CI) notices, so run it on every new Julia minor version.

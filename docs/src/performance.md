@@ -32,7 +32,10 @@ TTFX workload of `benchmark/ttfx.jl` after its Base-only setup.
 | 1.10.12 | main b4f1ca3 | 34.2 ms [30.3, 41.4] | 210.5 ms [184.8, 312.7] | 247.4 ms [218.1, 347.4] | 175 ms |
 | 1.10.12 | phase 4 | 57.3 ms [50.0, 73.6] | 8.6 ms [6.6, 12.7] | **68.6 ms** [57.8, 82.3] | 175 ms |
 
-Sequential `ttfx.jl --check` runs (15 warm processes, 3 compiles; load average 10–12):
+(Evidence: `.lanes/evidence/ttfx-ab-after.txt`.) Sequential `ttfx.jl` runs (15 warm processes,
+3 compiles; load average 10–12; `.lanes/evidence/ttfx-{before,after}-{release,lts}.txt`, taken
+when the precompile budget was still 2.0 s; the re-run against the committed budgets is
+`.lanes/evidence/ttfx-check-{release,lts}-*.txt`):
 
 | Julia | Variant | precompile (ChuiCore alone) | cold load + first call | warm load | warm load + first call |
 |---|---|---|---|---|---|
@@ -45,6 +48,9 @@ Sequential `ttfx.jl --check` runs (15 warm processes, 3 compiles; load average 1
 (the first load of a fresh package image), so the workload does not cause it.
 
 ## Allocations (ADR-0009 §1, asserted in `test/perf_allocs_tests.jl`)
+
+Printed by `julia +release|+lts benchmark/allocs.jl` (evidence:
+`.lanes/evidence/allocs-{release,lts}-64a13bb.txt`); the reviewer re-measured the same figures.
 
 | Hot path | Budget | 1.13.2 | 1.10.12 |
 |---|---|---|---|
@@ -65,6 +71,7 @@ main b4f1ca3 with this branch on 1.13.2, a selection (medians ± spread; ratio =
 
 | Benchmark | main | branch | ratio |
 |---|---|---|---|
+| `combine`+`final` Extrema | 1.96 ± 0.083 ns | 3.04 ± 1.2 ns | **0.644 ± 0.25** |
 | `partial` Sum, `Vector{Float64}` (10^4) | 0.774 μs | 0.775 μs | 1.00 |
 | `partial` Mean, `Vector{Float64}` | 1.02 ± 1.4 μs | 0.776 μs | 1.32 ± 1.7 |
 | `partial` Var, `Vector{Float64}` | 54.3 μs | 44.1 μs | 1.23 ± 0.43 |
@@ -77,8 +84,11 @@ main b4f1ca3 with this branch on 1.13.2, a selection (medians ± spread; ratio =
 | `⨟` (3 functions) | 1.5 ns | 1.12 ns | 1.33 ± 0.37 |
 | time to load (AirspeedVelocity's own, 5 samples) | 82 ± 80 ms | 73 ± 7 ms | 1.12 ± 1.1 |
 
-Phase 4 changes no hot-path code, so the runtime ratios are noise (every one is within its
-spread of 1.0); the full 45-row table is in the lane's evidence. Throughput on 1.13.2 (b4f1ca3):
+Phase 4 changes no hot-path code, so the runtime ratios are expected to be noise. All but one
+are within their spread of 1.0; the exception is `combine`+`final` for `Extrema` (≈1 ns slower on
+the branch, 0.644 ± 0.25), a nanosecond-scale entry with no code change behind it, listed here as
+a possible loss. The full 45-row table is the lane's evidence file
+`.lanes/evidence/asv-main-vs-branch-1.13.txt`. Throughput on 1.13.2 (b4f1ca3):
 `Sum`/`Mean` over a vector ≈0.08 ns per element, `Var` ≈4.4 ns, `foldxl` Map⨟Filter ≈1.4 ns,
 `cata` ≈18 ns/node over an own node type and ≈77 ns/node over `Fix`.
 
@@ -89,8 +99,8 @@ spread of 1.0); the full 45-row table is in the lane's evidence. Throughput on 1
   to +40 ms. Net: load + first call is still 4–5× faster.
 - **Precompile time** roughly doubles: 0.84 → 1.61 s (1.13), 0.88 → 1.39 s (1.10).
 - **1.10 is slower on `Max`/`Min`/`Extrema`:** ≈0.56 ns per element against ≈0.07 on 1.13 (7×);
-  Base's own `maximum` on 1.10 is 4.1 μs against our 5.5 μs for 10^4 elements, so no second code
-  path was added.
+  Base's own `maximum` on 1.10 is 4.2 μs against our 5.5 μs for 10^4 elements
+  (`.lanes/evidence/maximum-lts-64a13bb.txt`), so no second code path was added.
 - **`para` on 1.10** allocates ≈80 B/node against ≈48 on 1.13 (1.10 boxes the hole tuple).
 - **`Fix` trees** cost ≈47 B and ≈77 ns per node, 4× an own node type; by design (ADR, research A1).
 - **`aggregate`/`foldparts`** pay ≈0.5–0.66 kB and a task per partition: use few, large partitions.
