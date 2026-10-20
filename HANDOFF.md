@@ -6,7 +6,11 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 ## State
 
 - Branch: `feat/phase2-traits` (worktree `.worktrees/phase2-traits`), from main 3054d7c.
-  **Phase 2 (traits and law kits) implemented, reviewed, committed; waiting for the lead to merge.**
+  **Phase 2 (traits and law kits) implemented and committed; reviewer FINAL VERDICT: APPROVE WITH
+  NITS (blocker B1 and should-fixes S1–S3 fixed in eeca1f3); waiting for the lead to merge.**
+- Deferred review nits (phase 3/4): N2 `Sum`/`Prod`/`Mean` accept scalar elements only (document
+  or relax); N4 `BifunctorStyle` claims `IsBifunctor` for non-2-tuples; N5 mismatched classes in
+  `alt`/`ap` give `MethodError`, not `ArgumentError`.
 - Factory 0.2.5, package profile. Contracts binding since 2026-10-19.
 - Remote: `origin` (github.com/bonmac/ChuiCore.jl) exists locally with `origin/main` at 06d2ae6,
   behind local main (3054d7c). `dod.jl` and `lane audit` prefer `origin/main` as the base, so they
