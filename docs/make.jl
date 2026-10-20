@@ -14,7 +14,16 @@ makedocs(;
     modules = [ChuiCore],
     sitename = "ChuiCore.jl",
     format = Documenter.HTML(; prettyurls = get(ENV, "CI", "false") == "true"),
-    pages = ["Home" => "index.md", "Reference" => "api.md"],
+    pages = [
+        "Home" => "index.md",
+        "Reference" => [
+            "Core" => "api.md",
+            "Transducers" => "transducers.md",
+            "Recursion schemes and free monads" => "schemes.md",
+            "Optics" => "optics.md",
+            "Laziness and the banner" => "lazy.md",
+        ],
+    ],
     REMOTE_KW...,
 )
 
