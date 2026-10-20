@@ -13,6 +13,7 @@ module ChuiCore
 using Compat: @compat
 using CompositionsBase: ⨟, opcompose
 using ConstructionBase: setproperties     # optics rebuild structs through it (ADR-0008)
+using PrecompileTools: @compile_workload, @setup_workload   # the workload (ADR-0010)
 
 include("compose.jl")
 include("laws.jl")
@@ -26,6 +27,7 @@ include("optics/optics.jl")
 include("lazy.jl")
 include("banner.jl")
 include("names.jl")
+include("precompile.jl")                  # last: the workload calls the code above
 
 # Exported tier (ADR-0005 §3). Each name passes the clash list (test/exports/).
 export ⨟, opcompose                       # CompositionsBase's binding (ADR-0006, CC-001)
