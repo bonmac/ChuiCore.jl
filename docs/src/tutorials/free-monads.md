@@ -190,7 +190,7 @@ trampoline) and runs 10^6 instructions in constant stack, in either bind associa
 A program is data, and every instruction is a heap object plus a node in the continuation tree.
 Measured for ChuiCore's implementation in phase 5 (BenchmarkTools medians of building and
 `interpret`ing programs of 10^3 and 10^4 instructions with a counting handler, right- and
-left-nested binds; Julia 1.13.2 and 1.10.12, one thread, a loaded shared machine): **≈0.16–0.45
+left-nested binds; Julia 1.13.2 and 1.10.12, one thread, a loaded shared machine; two runs): **≈0.16–0.5
 µs and ≈130–270 B per interpreted instruction**. The research prototype measured ≈0.5–1.2 µs and
 ≈0.4–0.5 KB per instruction, 80–200× a plain `Dict` loop of ≈6 ns per step. Binding is O(1) in
 both associations, so left-nested `chain`s stay linear (the classic `Free` encoding is

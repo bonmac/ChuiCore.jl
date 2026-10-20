@@ -193,7 +193,7 @@ const _COST_FREE = """
 **Cost:** a program is data. Measured for this implementation in phase 5 (BenchmarkTools
 medians of building and `interpret`ing programs of 10^3 and 10^4 instructions with a counting
 handler, right- and left-nested binds, Julia 1.13.2 and 1.10.12, one thread, a loaded shared
-machine): ≈0.16–0.45 µs and ≈130–270 B per interpreted instruction. The research prototype
+machine; two runs): ≈0.16–0.5 µs and ≈130–270 B per interpreted instruction. The research prototype
 measured ≈0.5–1.2 µs and ≈0.4–0.5 KB, 80–200× a plain `Dict` loop of ≈6 ns per step. Free
 monads are for describing programs and plans (data to inspect, optimise and interpret), not for
 inner loops. Nothing infers (`Any`).
