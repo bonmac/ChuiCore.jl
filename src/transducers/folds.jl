@@ -10,9 +10,14 @@ Left fold of `itr` through the transducer `xf` into the binary `op`, starting fr
 termination by `Reduced`). Works on any iterable, including unbounded ones that some step stops.
 This is the fold for effectful pipelines.
 
-```julia
-using ChuiCore: foldxl, Map, Filter
-foldxl(+, Map(abs) ⨟ Filter(>(1)), [-1, 2, -3]; init = 0)   # 5
+```jldoctest
+julia> using ChuiCore: foldxl, Map, Filter, Take
+
+julia> foldxl(+, Map(abs) ⨟ Filter(>(1)), [-1, 2, -3]; init = 0)
+5
+
+julia> foldxl(+, Map(x -> x^2) ⨟ Take(3), Iterators.countfrom(1); init = 0)   # unbounded input
+14
 ```
 
 An accumulator whose type changes (`init = 0` with `Float64` steps) makes the loop type-unstable;
@@ -76,7 +81,23 @@ transducer (which makes the pipeline stateful and so sequential), for such stops
 concurrently and may run past a stop point (their effects happen, their results are discarded). Effectful pipelines use `foldxl`. ChuiTypes must not run `foldparts`/`foldxt` on unbounded
 or effectful streams.
 
-Cost: one task and one `init()` per partition, plus the per-element cost of `foldxl`.
+**Effects:** on the parallel path it spawns one task per partition (`Threads.@spawn`), so `op`,
+`merge`, `init` and `xf` run concurrently and must be pure (or at least thread-safe); every task
+is waited for before it returns, and a partition's exception surfaces as a `TaskFailedException`.
+
+Cost: one task and one `init()` per partition (measured ≈0.5–0.66 kB per partition, 992 B for 1
+and 2496 B for 4 partitions on Julia 1.13.2: `docs/src/performance.md`, `benchmark/allocs.jl`),
+plus the per-element cost of `foldxl`.
+
+```jldoctest
+julia> using ChuiCore: foldparts, Filter, TakeWhile
+
+julia> foldparts(+, Filter(iseven), [1:4, 5:8]; init = () -> 0, merge = +)
+20
+
+julia> foldparts(+, TakeWhile(<=(4)), [1:3, 4:10]; init = () -> 0, merge = +)   # stateful: sequential
+10
+```
 """
 function foldparts(op::OP, xf::Transducer, parts::AbstractVector; init, merge) where {OP}
     _check_factory(init)
@@ -128,7 +149,25 @@ be pure. With an identity `init`, and no `Reduced` from `op` that depends on the
 waits for every task before returning, and a partition's exception (also after a `Reduced`)
 surfaces as a `TaskFailedException`.
 
-Cost: one task, one view and one `init()` per partition (a few kB on 4 threads), no input copy.
+**Effects:** spawns up to `ntasks` tasks (`Threads.@spawn`, through `foldparts`) when `xf` is
+stateless, so `op`, `merge`, `init` and `xf` run concurrently and must be pure (or at least
+thread-safe); every task is waited for, and an exception surfaces as a `TaskFailedException`.
+
+Cost: one task, one view and one `init()` per partition, no input copy (measured 1088 B at
+`ntasks = 1`, 2720 B at `ntasks = 4`, 4880 B at `ntasks = 8` on Julia 1.13.2 with 1 thread,
+`benchmark/allocs.jl`).
+
+```jldoctest
+julia> using ChuiCore: foldxt, foldxl, Map
+
+julia> v = collect(-50:50);
+
+julia> foldxt(+, Map(abs), v; init = () -> 0, merge = +, ntasks = 4) == foldxl(+, Map(abs), v; init = 0)
+true
+
+julia> foldxt(+, Map(abs), v; init = () -> 0, merge = +, ntasks = 3)
+2550
+```
 """
 function foldxt(op::OP, xf::Transducer, v::AbstractVector; init, merge, ntasks::Integer = Threads.nthreads()) where {OP}
     ntasks >= 1 || throw(ArgumentError("foldxt: ntasks must be ≥ 1, got $ntasks"))
@@ -167,7 +206,22 @@ other runs sequentially over the flattened parts with one `init(agg)`. `xf` must
 parallel path it waits for every task, and a partition's exception surfaces as a
 `TaskFailedException` (as in `foldparts`).
 
-Cost: one task and one `init(agg)` per partition, one `partial` call per element.
+**Effects:** as [`ChuiCore.foldparts`](@ref): for a stateless `xf` it spawns one task per
+partition, so `xf` and the aggregator's methods run concurrently and must be pure (or at least
+thread-safe); every task is waited for, and an exception surfaces as a `TaskFailedException`.
+
+Cost: one task and one `init(agg)` per partition (measured 992 B for 1 and 2496 B for 4
+partitions on Julia 1.13.2, `docs/src/performance.md`), one `partial` call per element.
+
+```jldoctest
+julia> using ChuiCore: aggregate, Map, Filter, Sum, Mean
+
+julia> aggregate(Sum(), Map(abs), [[-1, 2], [-3, 4]])
+10
+
+julia> aggregate(Mean(), Filter(isodd) ⨟ Map(float), [1:4, 5:8])
+4.0
+```
 """
 function aggregate(agg, xf::Transducer, parts::AbstractVector)
     acc = foldparts(_AggStep(agg), xf, parts; init = _AggInit(agg), merge = _AggMerge(agg))
