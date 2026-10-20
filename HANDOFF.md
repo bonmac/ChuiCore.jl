@@ -7,7 +7,10 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 - Branch: `feat/phase2-traits` (worktree `.worktrees/phase2-traits`), from main 3054d7c.
   **Phase 2 (traits and law kits) implemented, reviewed, committed; waiting for the lead to merge.**
-- Factory 0.2.5, package profile. Contracts binding since 2026-10-19. Remote: none yet.
+- Factory 0.2.5, package profile. Contracts binding since 2026-10-19.
+- Remote: `origin` (github.com/bonmac/ChuiCore.jl) exists locally with `origin/main` at 06d2ae6,
+  behind local main (3054d7c). `dod.jl` and `lane audit` prefer `origin/main` as the base, so they
+  also count phase 1's files until main is pushed (the lead's/user's call).
 - Phase 1 (Research and ADRs) done: ADRs 0001–0008 Accepted 2026-10-20.
 - Phase 2 plan: `docs/superpowers/plans/2026-10-20-phase2-traits.md` (names, tiers, clash evidence).
 
