@@ -5,9 +5,17 @@
 # :contract items run in their own environment (test/contracts/), via `julia scripts/ci.jl contracts`.
 using TestItemRunner
 
-# :doctest and :snapshot output depends on the Julia version: CI runs them on stable only
-# (CI.yml sets CI_STABLE=false on the lts and pre jobs). JET is not here: see test/jet/.
-const EXCLUDE = get(ENV, "CI_STABLE", "true") == "false" ?
+# :doctest and :snapshot output depends on the Julia version, so they run on stable Julia only
+# (ecosystem ADR-0008 §3). STABLE_MIN is the oldest Julia whose printed output they expect.
+# CI_STABLE overrides it either way ("true" runs them, "false" skips them): CI.yml sets it on
+# every job (true on '1', false on lts and pre). Unset, a plain `]test` decides by VERSION, so a
+# fresh clone passes on the LTS too. JET is not here: see test/jet/.
+const STABLE_MIN = v"1.13"
+const STABLE = let v = get(ENV, "CI_STABLE", "")
+    v == "true" ? true : v == "false" ? false : isempty(v) ? VERSION >= STABLE_MIN :
+        throw(ArgumentError("CI_STABLE must be \"true\", \"false\" or unset, got $(repr(v))"))
+end
+const EXCLUDE = !STABLE ?
     (:slow, :quality, :contract, :differential, :doctest, :snapshot) :
     (:slow, :quality, :contract, :differential)
 const SELECT = Symbol.(ARGS)
