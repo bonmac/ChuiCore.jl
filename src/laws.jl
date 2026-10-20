@@ -13,6 +13,16 @@ other two from its second); `pred(xs...)::Bool` is `true` when the law holds for
 
 Public so downstream packages can read what a kit checks; constructing kits from `Law`s is
 internal.
+
+```jldoctest
+julia> law = ChuiCore.Law("addition commutes", (1, 1), (x, y) -> x + y == y + x);
+
+julia> law.name, law.args, law.pred(2, 3)
+("addition commutes", (1, 1), true)
+```
+
+Cost: a plain immutable struct; building one allocates only its `name` string. A driver calls
+`pred` once per argument combination it draws.
 """
 struct Law{A <: Tuple, P}
     name::String
@@ -25,6 +35,15 @@ end
 
 The default equality of a law kit: `isequal`, accepting either two results, or two results and
 the input they were computed from (the aggregator kits' 3-argument form, ADR-0007 §3).
+
+```jldoctest
+julia> eq = ChuiCore.ExactEq();
+
+julia> eq(NaN, NaN), eq(0.1 + 0.2, 0.3), eq(1, 1, [1])
+(true, false, true)
+```
+
+Cost: one `isequal` call; the input argument is ignored.
 """
 struct ExactEq end
 (::ExactEq)(a, b) = isequal(a, b)
@@ -36,6 +55,25 @@ struct ExactEq end
 The equality a law kit uses when the caller passes no `eq` (ADR-0007 §3). For the built-in
 aggregators it is CC-004's float tolerance `≈ᵃ`, called as `eq(r₁, r₂, v)` with `v` the whole input;
 otherwise [`ChuiCore.ExactEq`](@ref)`()`, which is `isequal`. Instance owners may add methods.
+
+```jldoctest
+julia> using ChuiCore: default_eq, Sum, Max
+
+julia> default_eq(Max())
+ChuiCore.ExactEq()
+
+julia> eq = default_eq(Sum()); v = [1.0, 1e16, -1e16];
+
+julia> eq(0.0, 1.0, v)   # CC-004: a split of v may give 1.0 where sum(v) is 0.0
+true
+
+julia> eq(0.0, 1.0, [0.0, 1.0])
+false
+```
+
+Cost: `default_eq` itself is one dispatch returning a small struct. Calling the built-in
+aggregators' tolerance costs one pass over `v` (to compute `τ(agg, v)`) per comparison;
+`ExactEq` is one `isequal`.
 """
 default_eq(_) = ExactEq()
 
@@ -54,7 +92,18 @@ test set; a failing `@test` shows the first counterexample. Methods exist only a
   makes a later 1.10 run throw ("Cannot read stream serialized with a newer version of Julia").
   Other generators may then be collections,
   which are sampled with `Data.SampledFrom`. Keyword `max_examples` (default 200).
-- Keyword `laws`: a collection of law names to run (default: all).
+- Keyword `laws`: a collection of law names to run (default: all); an unknown name throws an
+  `ArgumentError`.
+
+Cost: per law, at most 1,728 predicate calls over sample collections, or `max_examples` examples
+plus shrinking under Supposition; each predicate call costs a few calls of the instance's own
+operations (the aggregator kits rebuild fresh accumulators for every comparison).
+
+Effects: records one `@test` per law, inside one `@testset` per kit, in the current test set; at
+the top level that test set prints its summary and, if a law failed, throws
+`Test.TestSetException`. The Supposition methods also seed their generators from
+`Random.RandomDevice` (so runs differ), print each counterexample they find, and write no files
+(`db=false`). Nothing else is read or written.
 """
 
 """
@@ -64,6 +113,14 @@ Check the Semigroup laws of the instance value `m` (ADR-0001 §1). Carrier value
 the samples (`chunks`, each an iterable of elements) as fresh accumulators
 `partial(m, init(m), x)` and compared after `final` with `eq(r₁, r₂, v)`, where `v` is the
 concatenated input. Law: `associativity` of `ChuiCore.combine`.
+
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> test_semigroup_laws(ChuiCore.Max(), [[3, 1], Int[], [7], [-2, 5]])
+Test Summary:                       | Pass  Total  Time
+test_semigroup_laws(ChuiCore.Max()) |    1      1  0.0s
+```
 
 $_KIT_DOC_COMMON
 """
@@ -76,6 +133,14 @@ The Semigroup laws plus: `left identity` and `right identity` of `neutral(m)`, `
 init` (`final(m, init(m))` and `final(m, neutral(m))` are `isequal`), and `neutral is fresh` (a
 `neutral(m)` mutated by `combine` does not change a later `neutral(m)`). Conventions as in
 [`test_semigroup_laws`](@ref).
+
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> test_monoid_laws(ChuiCore.Sum(), [[1, 2], Int[], [3], [-4, 5, 6]])
+Test Summary:                    | Pass  Total  Time
+test_monoid_laws(ChuiCore.Sum()) |    5      5  0.0s
+```
 
 $_KIT_DOC_COMMON
 """
@@ -91,6 +156,14 @@ do not alias), and, when `reference` is a function, `agrees with reference` on n
 (CC-004 law 4, e.g. `reference = sum` for `ChuiCore.Sum()`). `eq(r₁, r₂, v)` compares finalized
 results.
 
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> test_aggregator_laws(ChuiCore.Sum(), [[1.0, 1e16, -1e16], Float64[], [0.5, 2.0]]; reference = sum)
+Test Summary:                        | Pass  Total  Time
+test_aggregator_laws(ChuiCore.Sum()) |    6      6  0.0s
+```
+
 $_KIT_DOC_COMMON
 """
 function test_aggregator_laws end
@@ -101,6 +174,14 @@ function test_aggregator_laws end
 Functor laws for the constructor class `tag` (ADR-0001 §3): `identity`
 (`fmap(identity, fa) == fa`) and `composition` (`fmap(g ∘ f, fa) == fmap(g, fmap(f, fa))`).
 `gen_fa` yields values of the class, `gen_f` unary functions.
+
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> test_functor_laws(ChuiCore.MaybeTag(), [Some(1), nothing, Some(-3)], [x -> x + 1, abs])
+Test Summary:                          | Pass  Total  Time
+test_functor_laws(ChuiCore.MaybeTag()) |    2      2  0.0s
+```
 
 $_KIT_DOC_COMMON
 """
@@ -113,6 +194,14 @@ Applicative laws for `tag`: `identity`, `composition`, `homomorphism`, `intercha
 `fmap agrees with ap`. `gen_fa` yields values of the class, `gen_f` unary functions, `gen_x` plain
 values; values holding functions are built as `fmap(_ -> f, fa)` and `pure(tag, f)`.
 
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> test_applicative_laws(ChuiCore.MaybeTag(), [Some(1), nothing], [x -> x + 1, abs], [0, -2])
+Test Summary:                              | Pass  Total  Time
+test_applicative_laws(ChuiCore.MaybeTag()) |    5      5  0.0s
+```
+
 $_KIT_DOC_COMMON
 """
 function test_applicative_laws end
@@ -124,6 +213,16 @@ Monad laws for `tag`: `left identity` (`chain(k, pure(tag, x)) == k(x)`), `right
 `associativity`, and `ap agrees with chain`. `gen_m` yields monadic values, `gen_k` functions
 from a plain value to a monadic value, `gen_x` plain values.
 
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> ks = [x -> Some(x + 1), x -> x > 0 ? Some(x) : nothing];
+
+julia> test_monad_laws(ChuiCore.MaybeTag(), [Some(1), nothing, Some(-3)], ks, [0, 2])
+Test Summary:                        | Pass  Total  Time
+test_monad_laws(ChuiCore.MaybeTag()) |    4      4  0.0s
+```
+
 $_KIT_DOC_COMMON
 """
 function test_monad_laws end
@@ -133,6 +232,14 @@ function test_monad_laws end
 
 Alternative laws for `tag` (the monoid laws of `alt` and `zeroalt(tag)`, as Haskell `base` states
 them): `left identity`, `right identity`, `associativity`.
+
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> test_alternative_laws(ChuiCore.ArrayTag(), [[1], Int[], [2, 3]])
+Test Summary:                              | Pass  Total  Time
+test_alternative_laws(ChuiCore.ArrayTag()) |    3      3  0.0s
+```
 
 $_KIT_DOC_COMMON
 """
@@ -144,6 +251,14 @@ function test_alternative_laws end
 Foldable is Base iteration (ADR-0001 §3); the laws relate Base's folds to iteration order:
 `foldl matches iteration`, `foldr matches foldl` (on a non-commutative operation), and
 `mapreduce matches foldl`.
+
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> test_foldable_laws(ChuiCore.TupleTag(), [(1, 2, 3), (), (4,)])
+Test Summary:                           | Pass  Total  Time
+test_foldable_laws(ChuiCore.TupleTag()) |    3      3  0.0s
+```
 
 $_KIT_DOC_COMMON
 """
@@ -157,6 +272,16 @@ Traversable laws for the traversable values `gen_ta` of class `tag`: `identity`
 transformation from Maybe to `Vector`), and `composition` (Maybe inside Maybe). `gen_f` yields
 functions from an element to a Maybe (`Some(y)` or `nothing`).
 
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> fs = [x -> Some(x + 1), x -> x > 0 ? Some(x) : nothing];
+
+julia> test_traversable_laws(ChuiCore.ArrayTag(), [[1, 2], Int[], [-1, 3]], fs)
+Test Summary:                              | Pass  Total  Time
+test_traversable_laws(ChuiCore.ArrayTag()) |    3      3  0.0s
+```
+
 $_KIT_DOC_COMMON
 """
 function test_traversable_laws end
@@ -166,6 +291,16 @@ function test_traversable_laws end
 
 Contravariant laws for callable values `gen_p` of class `tag`, compared extensionally on the
 inputs `gen_x`: `identity` and `composition` (`contramap(f ∘ g, p) ≡ contramap(g, contramap(f, p))`).
+
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> ps = [ChuiCore.Predicate(iseven), ChuiCore.Predicate(x -> x > 0)];
+
+julia> test_contravariant_laws(ChuiCore.PredicateTag(), ps, [x -> x + 1, abs], [-2, 0, 3])
+Test Summary:                                    | Pass  Total  Time
+test_contravariant_laws(ChuiCore.PredicateTag()) |    2      2  0.0s
+```
 
 $_KIT_DOC_COMMON
 """
@@ -177,6 +312,14 @@ function test_contravariant_laws end
 Bifunctor laws for `tag`: `identity` (`bimap(identity, identity, p) == p`) and `composition`
 (`bimap(f ∘ g, h ∘ i, p) == bimap(f, h, bimap(g, i, p))`).
 
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> test_bifunctor_laws(ChuiCore.PairTag(), [1 => 2, -3 => 4], [x -> x + 1, abs])
+Test Summary:                           | Pass  Total  Time
+test_bifunctor_laws(ChuiCore.PairTag()) |    2      2  0.0s
+```
+
 $_KIT_DOC_COMMON
 """
 function test_bifunctor_laws end
@@ -186,6 +329,16 @@ function test_bifunctor_laws end
 
 Profunctor laws for callable values `gen_p`, compared extensionally on `gen_x`: `identity`,
 `composition`, and `dimap agrees with lmap and rmap`.
+
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> fs = [x -> x + 1, abs, x -> 2x];
+
+julia> test_profunctor_laws(ChuiCore.FunctionTag(), fs, fs, [-2, 0, 3])
+Test Summary:                                | Pass  Total  Time
+test_profunctor_laws(ChuiCore.FunctionTag()) |    3      3  0.0s
+```
 
 $_KIT_DOC_COMMON
 """
@@ -197,6 +350,14 @@ function test_profunctor_laws end
 Category laws for callable arrows `gen_a`, composed with `⨟` and compared extensionally on
 `gen_x`: `left identity`, `right identity`, `associativity` (identity is `idarrow(tag)`).
 
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> test_category_laws(ChuiCore.FunctionTag(), [x -> x + 1, abs, x -> 2x], [-2, 0, 3])
+Test Summary:                              | Pass  Total  Time
+test_category_laws(ChuiCore.FunctionTag()) |    3      3  0.0s
+```
+
 $_KIT_DOC_COMMON
 """
 function test_category_laws end
@@ -207,6 +368,14 @@ function test_category_laws end
 The Category laws plus Haskell's Arrow laws for `arr` and `arrfirst`, compared extensionally on
 `gen_x` (and on pairs built from it): `arr identity`, `arr composition`, `first of arr`,
 `first of composition`, `first then fst`, `first commutes with second`, `first associates`.
+
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> test_arrow_laws(ChuiCore.FunctionTag(), [x -> x + 1, abs], [x -> x - 1, x -> 3x], [-2, 0, 3])
+Test Summary:                           | Pass  Total  Time
+test_arrow_laws(ChuiCore.FunctionTag()) |   10     10  0.0s
+```
 
 $_KIT_DOC_COMMON
 """
@@ -220,6 +389,14 @@ Lens laws for `lens` (ADR-0004 §2), getting by calling the lens and setting wit
 `set-set` (`set(set(s, l, v₁), l, v₂) == set(s, l, v₂)`). `gen_s` yields whole values, `gen_v`
 values for the focus. Works for any lens [`ChuiCore.set`](@ref) accepts, compositions included.
 Cost: at most three `set`s and two gets per sample combination.
+
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> test_lens_laws(ChuiCore.Lens{:a}(), [(a = 1, b = "x"), (a = -2, b = "")], [0, 7])
+Test Summary:                       | Pass  Total  Time
+test_lens_laws(ChuiCore.Lens{:a}()) |    3      3  0.0s
+```
 
 $_KIT_DOC_COMMON
 """
@@ -235,6 +412,19 @@ Include values of the prism's case in `gen_s`, or `preview-review` checks nothin
 compares foci and whole values, never `Some` wrappers (`review-preview` checks that `preview`
 matches, then `eq(focus, v)`), so `eq = ≈` works on numeric foci. Cost: one `preview` and one
 `review` per sample (each kit runs at most 12 samples per argument).
+
+An outer `@testset` gives the summary a stable title (the kit's own title prints the prism, whose
+type names an anonymous function):
+
+```jldoctest; filter = r"(Test Summary:.*)?"s
+julia> using Test
+
+julia> positive = ChuiCore.Prism(x -> x > 0 ? Some(x) : nothing, identity);
+
+julia> @testset "positive prism" test_prism_laws(positive, [-2, 0, 1, 5], [1, 30]);
+Test Summary:  | Pass  Total  Time
+positive prism |    2      2  0.0s
+```
 
 $_KIT_DOC_COMMON
 """

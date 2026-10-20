@@ -13,8 +13,33 @@ contract). Commutativity (`C`) and whether a neutral was declared (`N`) are type
 - With `neutral = x`: a Monoid; `init` and `neutral` return a fresh copy of `x` (`deepcopy` unless
   `isbits`), and empty input returns it. It is not compared with Base (CC-006 exemption).
 
-The default `default_eq` is exact (`isequal`). Cost: one `op` call per element; a `deepcopy` per
-`init` for a mutable neutral.
+The default `default_eq` is exact (`isequal`).
+
+```jldoctest
+julia> using ChuiCore: ReduceM, AlgebraClass, init, partial, combine, final
+
+julia> m = ReduceM(*);   # string concatenation: associative, not commutative
+
+julia> final(m, combine(m, partial(m, init(m), ["a", "b"]), partial(m, init(m), ["c"])))
+"abc"
+
+julia> AlgebraClass(m)
+ChuiCore.IsSemigroup()
+
+julia> final(m, init(m))
+ERROR: ArgumentError: ReduceM: empty input and no declared neutral element
+Stacktrace:
+[...]
+
+julia> s = ReduceM(+; neutral = 0, commutative = true);
+
+julia> AlgebraClass(s), final(s, init(s))
+(ChuiCore.IsMonoid(), 0)
+```
+
+Cost: one `op` call per element and per `combine`, plus what `op` itself costs; no allocation of
+its own for an `isbits` neutral or none (measured with `@allocated` for `ReduceM(+)` on a
+`Vector{Int}`); `init` and `neutral` `deepcopy` a mutable declared neutral on every call.
 """
 struct ReduceM{C, N, F, E}
     op::F
@@ -44,8 +69,23 @@ final(::ReduceM, ::NoValue) = throw(ArgumentError("ReduceM: empty input and no d
 Aggregator for the `inner` aggregation of `map(f, v)` (CC-007): `partial` applies `f` lazily
 (`Iterators.map`, no intermediate array); `init`, `combine`, `final`, `AlgebraClass`,
 `iscommutative` and `neutral` are `inner`'s. Empty input behaves as `inner` on empty input. Its
-`default_eq` is `inner`'s tolerance on `map(f, v)`. Cost: `inner`'s, plus one `f` call per element;
-`inner`'s `AbstractArray` fast paths do not apply.
+`default_eq` is `inner`'s tolerance on `map(f, v)`.
+
+```jldoctest
+julia> using ChuiCore: MapM, Sum, Max, init, partial, final
+
+julia> m = MapM(abs2, Sum());
+
+julia> final(m, partial(m, init(m), [1, -2, 3]))   # sum(abs2, v), no intermediate array
+14
+
+julia> a = MapM(abs, Max()); final(a, partial(a, init(a), [-7, 2]))
+7
+```
+
+Cost: `inner`'s, plus one `f` call per element; `inner`'s `AbstractArray` fast paths do not
+apply (the chunk is an `Iterators.map`); no allocation of its own (measured with `@allocated`
+for `MapM(abs2, Sum())` on a `Vector{Int}`).
 """
 struct MapM{F, I}
     f::F
