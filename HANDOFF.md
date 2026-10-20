@@ -10,13 +10,14 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
   ChuiRegistry now, per ecosystem ADR-0004, so ChuiTypes and ChuiFrames can depend on a released
   ChuiCore; v0.1.0 later). Branch `feat/release-001` (worktree `.worktrees/release-001`): the
   9 fragments folded under `## [0.0.1] - 2026-10-20`, `changelog.d/` empty. Release gate green on
-  1.13.2 and 1.10.12 (evidence `.lanes/evidence/tests-952f9d7.txt`, `tests-lts-952f9d7.txt` in
+  1.13.2 and 1.10.12 (evidence `.lanes/evidence/tests-e80dce9.txt`, `tests-lts-e80dce9.txt` in
   that worktree); `ci.jl contracts` NOT RUN (waiting: no upstreams). Not merged.
-- **Open finding (lead to decide before tagging):** a fresh clone's plain `]test` on Julia
-  1.10.12 fails 1 of 3369 (the `:doctest` item: `Test.anynonpass` is not defined on 1.10, plus
-  two output-format diffs in `docs/src/tutorials/optics.md`). `test/runtests.jl` skips `:doctest`
-  only when `CI_STABLE=false`, not by Julia version. With `CI_STABLE=false` the fresh clone passes
-  3262/3262 on 1.10; on 1.13 a plain `]test` passes 3369/3369. Fix belongs to a `test/` lane.
+- Fixed before tagging (e80dce9): a fresh clone's plain `]test` on Julia 1.10 ran the
+  stable-only `:doctest` item and failed. `test/runtests.jl` now decides by `STABLE_MIN = v"1.13"`
+  when `CI_STABLE` is unset, and `CI_STABLE=true`/`false` still overrides it. Fresh clones pass a
+  plain `]test` on 1.13.2 (3369/3369) and 1.10.12 (3262/3262). Evidence:
+  `.lanes/evidence/tests-e80dce9.txt`, `tests-lts-e80dce9.txt`. The factory template has the same
+  bug, which is the factory lane's to fix.
 - **Waiting for the user**: merge to main, push main to GitHub, tag `v0.0.1`, register in
   ChuiRegistry (steps in the release-manager report to the lead). Nothing is tagged or registered.
 - Factory 0.2.6, package profile. Contracts binding since 2026-10-19.
