@@ -108,13 +108,22 @@ Use free monads to describe programs and plans, not for inner loops.
 
 | Abstraction | Cost |
 |---|---|
-| `Thunk` | a struct holding a function; each `force` is one call of it |
-| `Lazy` | construction allocates the cell and a `ReentrantLock`; a forced read is one acquire load plus a field read, no allocation |
+| `Thunk` | a struct holding a function; each `force` is one call of it (≈1.1 ns plus the body) |
+| `Lazy` | construction: the cell and a `ReentrantLock`, 4 allocations, 160 B, ≈14 ns; a forced read is one acquire load plus a field read, no allocation, ≈2–3 ns |
 | deferred `fmap`/`chain` on `Lazy` | one new `Lazy` cell per operation |
 
 For lazy sequences, `Base.Iterators` is fused at compile time and is the better tool.
 
 ## The conflict banner
 
-`binding_conflicts` is O(exported names × loaded modules), run once at package load;
-`conflict_banner` adds printing, and costs nothing when silenced (`CHUI_QUIET_CONFLICTS=1`).
+`binding_conflicts` is O(exported names × loaded modules), run once at package load: measured
+≈35 µs and 18 KB on 1.13.2 (36 exports, 32 loaded modules), ≈46 µs and 71 KB on 1.10.12 (56
+modules); no budget is set for it. `conflict_banner` adds printing, and computes nothing when
+silenced (`CHUI_QUIET_CONFLICTS=1`).
+
+## Optics, one more trap
+
+A composed optic is a `ComposedFunction`, a subtype of `Function`, and Julia does not specialize a
+method on a `Function` argument it only passes on. Passing a composed optic through a function of
+yours without a type parameter cost 20–40 ns and 2–3 allocations per `set`, against ≈2.5 ns and
+0 B with `g(x, o::O) where {O}` (both Julia versions).
