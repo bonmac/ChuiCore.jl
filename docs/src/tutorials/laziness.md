@@ -181,14 +181,15 @@ nothing.
 ## What it costs
 
 Measured with BenchmarkTools medians on Apple silicon, Julia 1.13.2 and 1.10.12, the cell behind
-a `Ref` so the compiler cannot fold the read away; indicative only.
+a `Ref` so the compiler cannot fold the read away, on a loaded machine; indicative only
+(evidence `.lanes/evidence/p5-optics-costs-{release,lts}-8fbb53f.txt`).
 
 - **`Thunk`:** a struct holding the function, no allocation when it does not escape; each `force`
   is one call of the body, about 1.1 ns plus the body's own work.
 - **`Lazy`, construction:** the cell and its `ReentrantLock`: 4 allocations, 160 bytes, about
   14 ns. The first `force` takes the lock once and runs the body.
 - **`Lazy`, forced reads:** one atomic acquire load and a field read, no allocation: about
-  2–2.5 ns inlined, 2.5–3 ns through a non-inlined call. An unsynchronised cell would be a little
+  2–2.6 ns inlined, 2.4–3.1 ns through a non-inlined call. An unsynchronised cell would be a little
   cheaper and is not thread-safe (the phase-1 research measured repeated initialisation under
   four threads).
 - **`isforced`:** one atomic load, about 2 ns.

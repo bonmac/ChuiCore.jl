@@ -77,8 +77,8 @@ For lazy *sequences*, use `Base.Iterators` (fused at compile time, no allocation
 a shared value or structure computed on demand.
 
 Cost (indicative): construction allocates the cell and a `ReentrantLock` (4 allocations,
-160 bytes, about 14 ns for a body that captures nothing, on Julia 1.13.2). A forced read is one
-acquire load plus a field read, no allocation: about 2–2.5 ns inlined and 2.5–3 ns through a
+160 bytes, about 14 ns for a body that captures nothing, on Julia 1.10.12 and 1.13.2). A forced read is one
+acquire load plus a field read, no allocation: about 2–2.6 ns inlined and 2.4–3.1 ns through a
 `@noinline` call, on Julia 1.10.12 and 1.13.2 (BenchmarkTools medians, Apple silicon,
 re-measured on 2026-10-20 with the cell behind a `Ref` so the read is not constant-folded; the
 phase-1 research prototype, on a loaded machine, gave 5.7–6.2 ns). `force(::Lazy{T})` infers
@@ -198,7 +198,7 @@ end
 Whether the body of `l` has run, whether it returned a value or threw (a cached exception counts
 as forced). Never forces.
 
-Cost: one atomic load (about 2 ns, Julia 1.13.2, Apple silicon; indicative).
+Cost: one atomic load (about 2 ns on Julia 1.10.12 and 1.13.2, Apple silicon; indicative).
 
 ```jldoctest
 julia> using ChuiCore: Lazy, force, isforced

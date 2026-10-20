@@ -144,8 +144,10 @@ The conflicts themselves remain: a silenced banner just stops reminding you to w
 
 - **`binding_conflicts`:** one `Base.isexported` check per exported name per loaded module, plus a
   walk of `Main`'s submodules: O(exports × loaded modules). For ChuiCore's 36 exports against 32
-  loaded modules, about 34 μs and 18 KB after compilation (BenchmarkTools median, Julia 1.13.2,
-  Apple silicon; indicative). No budget is set for it.
+  loaded modules, about 34–36 μs and 18 KB after compilation on Julia 1.13.2; about 46 μs
+  against 56 modules on 1.10.12 (BenchmarkTools medians, Apple silicon, loaded machine;
+  indicative; evidence `.lanes/evidence/p5-optics-costs-{release,lts}-8fbb53f.txt`). No budget
+  is set for it.
 - **`conflict_banner`:** that, plus printing; one environment-variable read and nothing else when
   silenced.
 - Both read global state (what is loaded) and are meant for package load or an occasional check,

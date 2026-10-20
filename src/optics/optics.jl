@@ -24,8 +24,8 @@ as with Accessors.
 
 **Cost:** with the property name in the type (`Lens{:a}()`, `Lens(Val(:a))`, a literal in
 `@lens`), get is one field access and set is one constructor call: type-stable, 0 bytes, no
-dynamic dispatch (about 2 ns either way, BenchmarkTools median on Julia 1.13.2, Apple silicon,
-2026-10-20; indicative). `Lens(:a)` with a runtime `Symbol` is type-unstable unless the compiler
+dynamic dispatch (about 2–3 ns either way, BenchmarkTools medians on Julia 1.10.12 and 1.13.2,
+Apple silicon, loaded machine, 2026-10-20; indicative). `Lens(:a)` with a runtime `Symbol` is type-unstable unless the compiler
 constant-folds the symbol; it is not the default form.
 
 ```jldoctest
@@ -77,7 +77,8 @@ new value and never mutates the input:
 
 **Cost:** get is one `getindex`. Set on a `Tuple` or `NamedTuple` rebuilds it (0 bytes when the
 index is a constant); on an array or dictionary it allocates a full copy, O(length) (for a
-1,000-element `Vector{Int}`: 3 allocations, 8,256 bytes on Julia 1.13.2).
+1,000-element `Vector{Int}`: 3 allocations, 8,256 bytes on Julia 1.13.2; 1 allocation,
+8,192 bytes on 1.10.12).
 
 ```jldoctest
 julia> using ChuiCore: IndexLens
@@ -230,8 +231,8 @@ lenses on immutable structs). A composed optic is a `ComposedFunction`, a `Funct
 of yours that only passes it on is not specialized on it unless the argument has a type parameter
 (`g(x, o::O) where {O} = set(x, o, 1)`); without one, each call dispatches dynamically and
 allocates (measured on Julia 1.10.12 and 1.13.2: for `@lens _.a.x` on a nested struct, through a
-`@noinline` function, 2–3 allocations and about 18–20 ns without the type parameter, 0 bytes and
-about 2.5 ns with it; BenchmarkTools medians, Apple silicon, 2026-10-20).
+`@noinline` function, 2–3 allocations and 20–40 ns without the type parameter, 0 bytes and
+about 2.5 ns with it; BenchmarkTools medians, Apple silicon, loaded machine, 2026-10-20).
 
 ```jldoctest
 julia> using ChuiCore: Lens, IndexLens, @lens

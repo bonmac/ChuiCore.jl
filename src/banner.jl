@@ -23,8 +23,9 @@ REPL), except `mod` itself. Only modules loaded **before** the call are seen.
 
 Cost: one pass over the other modules per exported name (`Base.isexported` checks), plus one
 walk of `Main`'s submodules, so O(exports × loaded modules): about 34 μs and 18 KB for ChuiCore's
-36 exports against 32 loaded modules (BenchmarkTools median, Julia 1.13.2, Apple silicon,
-2026-10-20; indicative, after compilation). No budget is set for it. Meant for package load, not
+36 exports against 32 loaded modules on Julia 1.13.2, about 46 μs and 71 KB against 56 on
+1.10.12 (BenchmarkTools medians, Apple silicon, loaded machine, 2026-10-20; indicative, after
+compilation). No budget is set for it. Meant for package load, not
 for loops.
 
 **Effects:** reads global state (the loaded modules and `Main`'s submodules), so the result

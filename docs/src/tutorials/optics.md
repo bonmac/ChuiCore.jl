@@ -298,18 +298,19 @@ the law-kits tutorial).
 
 - **Lenses with the name in the type** (`Lens{:a}()`, `@lens` with literal names): get is one
   field access and set one constructor call, type-stable, 0 bytes. Compositions cost the sum of
-  their parts and stay at 0 bytes on immutable structs. About 2 ns per get or set, nested or not
-  (BenchmarkTools medians, Julia 1.13.2, Apple silicon; indicative). `Lens(:a)` with a runtime
+  their parts and stay at 0 bytes on immutable structs. About 1.4–3 ns per get or set, nested or
+  not (BenchmarkTools medians, Julia 1.10.12 and 1.13.2, Apple silicon, on a loaded machine;
+  indicative; evidence `.lanes/evidence/p5-optics-costs-{release,lts}-8fbb53f.txt`). `Lens(:a)` with a runtime
   `Symbol` is type-unstable unless the symbol is a constant.
 - **`IndexLens`:** a tuple or named tuple is rebuilt (0 bytes with a constant index); an array or
-  dictionary is copied in full, O(length): 3 allocations and 8,256 bytes to set one element of a
+  dictionary is copied in full, O(length): about 8 KB (1–3 allocations) to set one element of a
   1,000-element `Vector{Int}`. In a loop over a large array, mutate it with `setindex!` instead.
 - **Prisms:** one call of `match` (an `isa` test for `Prism(T)`), plus one of `build` to update.
   `set`/`modify` through a prism return a `Union` of the input's type and `build`'s result.
 - **Passing a composed optic on:** a composition is a `ComposedFunction`, a `Function`, and
   Julia does not specialize on a `Function` argument that is only passed on. Give your own
   function a type parameter for it (`g(x, o::O) where {O} = ChuiCore.set(x, o, 1)`): without it,
-  each call dispatches dynamically (measured 18–20 ns and 2–3 allocations against 2.5 ns and
+  each call dispatches dynamically (measured 20–40 ns and 2–3 allocations against 2.5 ns and
   0 bytes, on Julia 1.10.12 and 1.13.2).
 - **Interop:** the extension's methods forward to the other package's `set`/`modify`; no
   conversion between optic types.
