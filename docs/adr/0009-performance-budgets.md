@@ -1,8 +1,7 @@
 # ADR-0009: ChuiCore's performance budgets: zero-allocation hot paths, a load-plus-first-call budget, a fixed benchmark set
 
-- **Status:** Proposed (2026-10-20, phase-4 lane). The numbers come from measurements; the
-  multipliers, the one-way rule (§5) and keeping the checks out of CI (§6) are policy choices for
-  the user at the next ★.
+- **Status:** Accepted (2026-10-20, user at the ChuiCore phase-4 ★): the multipliers, the 3.0 s
+  precompile budget, the one-way rule (§5) and keeping the checks out of CI (§6) accepted as written.
 - **Date:** 2026-10-20
 - **Deciders:** the user at the phase-4 ★ (policy items above), the lead (the measured numbers)
 - **Scope:** ChuiCore.jl

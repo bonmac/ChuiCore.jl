@@ -1,6 +1,6 @@
 # ADR-0010: Depend on PrecompileTools for a precompile workload that calls one function on opaque inputs
 
-- **Status:** Proposed (2026-10-20, phase-4 lane)
+- **Status:** Accepted (2026-10-20, user at the ChuiCore phase-4 ★)
 - **Date:** 2026-10-20
 - **Deciders:** the lead; the user at the next ★ (a new hard dependency)
 - **Scope:** ChuiCore.jl (a dependency ADR)

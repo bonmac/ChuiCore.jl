@@ -15,7 +15,7 @@ about 60–120 lines, titled as a claim. Keep this index current in the same com
 | 0006 | [Depend on CompositionsBase for the one `⨟` binding](0006-dependency-compositionsbase.md) | Accepted (2026-10-20, user at the ChuiCore phase-1 ★); CC-001 amendment pending |
 | 0007 | [Law kits are exported stubs whose methods live in extensions on Test and Supposition](0007-law-kits-as-stubs-plus-extensions.md) | Accepted (2026-10-20, user at the ChuiCore phase-1 ★); ecosystem ADR-0007 §2 amendment pending |
 | 0008 | [Depend on ConstructionBase for struct rebuilding in optics](0008-dependency-constructionbase.md) | Accepted (2026-10-20, user at the ChuiCore phase-1 ★) |
-| 0009 | [ChuiCore's performance budgets: zero-allocation hot paths, a load-plus-first-call budget, a fixed benchmark set](0009-performance-budgets.md) | Proposed (2026-10-20, phase 4; policy items to the user at the ★) |
-| 0010 | [Depend on PrecompileTools for a precompile workload that calls one function on opaque inputs](0010-dependency-precompiletools.md) | Proposed (2026-10-20, phase 4; a new dependency, to the user at the ★) |
+| 0009 | [ChuiCore's performance budgets: zero-allocation hot paths, a load-plus-first-call budget, a fixed benchmark set](0009-performance-budgets.md) | Accepted (2026-10-20, user at the ChuiCore phase-4 ★) |
+| 0010 | [Depend on PrecompileTools for a precompile workload that calls one function on opaque inputs](0010-dependency-precompiletools.md) | Accepted (2026-10-20, user at the ChuiCore phase-4 ★) |
 
 Package ADRs cite coordinator ADRs as "ecosystem ADR-NNNN"; a bare "ADR-NNNN" means this repo's.
