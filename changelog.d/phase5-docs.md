@@ -18,7 +18,9 @@
 - Error-message wording: the constructor-class errors now say "is not an Applicative",
   "an Alternative", "an Arrow" (they said "a Applicative" etc.); message text only, the
   exception type (`ArgumentError`) is unchanged.
-- The reference has a new internal constant `_CLASS_EXAMPLES` in `src/classes/core.jl`, used
-  only to generate the style docstrings' examples.
+- The tag and style docstrings of the constructor classes moved to a docstrings-only file,
+  `src/classes/style_docs.jl` (with the internal tables `_TAG_DOCS` and `_CLASS_EXAMPLES` that
+  generate their examples), keeping `src/classes/core.jl` under the 600-line ratchet; the type and
+  method definitions stay in `core.jl`, unchanged.
 - README: installation (ChuiRegistry once registered; by URL or local clone until then), a quick
   example, links.

@@ -14,6 +14,6 @@ Modules = [ChuiCore]
 Private = false
 Pages = [
     "classes/class_laws.jl", "classes/classes.jl", "classes/core.jl", "classes/instances.jl",
-    "classes/owned.jl",
+    "classes/owned.jl", "classes/style_docs.jl",
 ]
 ```
