@@ -33,3 +33,27 @@
 @compat public CategoryStyle, IsCategory, NotCategory
 @compat public ArrowStyle, IsArrow, NotArrow
 @compat public Identity, ZipVector, Predicate
+
+# The transducer substrate (ADR-0003 §7): types, reducing functions, protocol, folds.
+@compat public Transducer, Map, Filter, MapCat, Take, TakeWhile, Scan, Partition, Composed
+@compat public R, Bottom, asrf, start, next, complete, isstateless
+@compat public Reduced, reduced, unreduced, isreduced
+@compat public foldxl, foldparts, foldxt, aggregate
+
+# Recursion schemes (request R6; research recommendations 1–4).
+@compat public Fix, project, cata, ana, hylo, para, apo, histo, futu, cataM, anaM, hyloM
+@compat public Done, More, Attr, Emit
+
+# Data types à la carte and the freer monad (research recommendations 5–6).
+@compat public Coproduct, Inl, Inr, CoproductTag, inj, prj
+@compat public Free, Pure, Impure, FreeTag, liftF, interpret, cohandler, foldfree
+
+# Optics (ADR-0004, ADR-0008). `set`/`modify` are never exported: a bare `set` would clash with
+# Accessors' export.
+@compat public Lens, IndexLens, @lens, Prism, preview, review, set, modify
+
+# Laziness (research recursion-schemes-free-laziness.md, recommendation 7; request R5).
+@compat public Thunk, Lazy, force, isforced, @lazy, LazyTag
+
+# The name-conflict banner (request R9).
+@compat public binding_conflicts, conflict_banner

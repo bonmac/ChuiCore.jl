@@ -157,3 +157,15 @@ end
     @test run(CC.AllM(), (x for x in [true, false])) === false
     @test run(CC.CountTrue(), Iterators.filter(identity, [true, false, true])) === 2
 end
+
+@testitem "Sum, Prod, Mean take scalar elements; ReduceM covers vectors (phase-2 nit N2)" tags = [:unit] begin
+    CC = ChuiCore
+    run(agg, v) = CC.final(agg, CC.partial(agg, CC.init(agg), v))
+    vs = [[1, 2], [3, 4]]
+    # Documented limit: the accumulators start from the scalar 0, 1 and (0.0, 0).
+    for agg in (CC.Sum(), CC.Prod(), CC.Mean())
+        @test_throws MethodError run(agg, vs)
+    end
+    # The documented alternative for vector elements.
+    @test run(CC.ReduceM(+; neutral = [0, 0], commutative = true), vs) == [4, 6]
+end

@@ -94,6 +94,26 @@ end
     @test (rv isa QuoteNode ? rv.value : rv) === ChuiCore.IsFunctor()   # 1.10 wraps it in a QuoteNode
 end
 
+@testitem "classes: mismatched instances in ap and alt throw ArgumentError (phase-2 nit N5)" tags = [:unit] begin
+    C = ChuiCore
+    # Both operands are instances, but of different classes (or an unsupported pairing).
+    @test_throws ArgumentError C.ap([identity], Some(1))
+    @test_throws ArgumentError C.ap(Some(identity), [1])
+    @test_throws ArgumentError C.ap(C.Identity(identity), Some(1))
+    @test_throws ArgumentError alt([1], Some(1))
+    @test_throws ArgumentError alt(Some(1) => 2, [1])  # a Pair is not an Alternative at all
+    err = try
+        C.ap([identity], Some(1))
+    catch e
+        e
+    end
+    @test occursin("Vector", err.msg) && occursin("Some", err.msg)
+    # Lawful pairings are unchanged.
+    @test C.ap(Some(abs), nothing) === nothing
+    @test C.ap(nothing, [1]) === nothing  # Maybe's `nothing <*> _` short-circuits, as before
+    @test alt(nothing, [1]) == [1]
+end
+
 @testitem "classes: unregistered types throw ArgumentError" tags = [:unit] begin
     C = ChuiCore
     struct NotAClassUser

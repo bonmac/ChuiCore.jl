@@ -12,11 +12,19 @@ module ChuiCore
 
 using Compat: @compat
 using CompositionsBase: ⨟, opcompose
+using ConstructionBase: setproperties     # optics rebuild structs through it (ADR-0008)
 
 include("compose.jl")
 include("laws.jl")
 include("algebra/algebra.jl")
 include("classes/classes.jl")
+include("transducers/transducers.jl")
+include("transducers/folds.jl")
+include("schemes/schemes.jl")
+include("schemes/free.jl")
+include("optics/optics.jl")
+include("lazy.jl")
+include("banner.jl")
 include("names.jl")
 
 # Exported tier (ADR-0005 §3). Each name passes the clash list (test/exports/).
@@ -30,5 +38,6 @@ export test_functor_laws, test_applicative_laws, test_monad_laws, test_alternati
 export test_foldable_laws, test_traversable_laws
 export test_contravariant_laws, test_bifunctor_laws, test_profunctor_laws
 export test_category_laws, test_arrow_laws
+export test_lens_laws, test_prism_laws
 
 end # module ChuiCore

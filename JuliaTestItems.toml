@@ -1,0 +1,4 @@
+# Scope of the test-item search (TestItemRunner ≥ 1.3.2, and VS Code's test explorer). Lane scratch
+# copies and nested worktrees are gitignored copies of this package: never parse them, so their
+# `@testmodule`s cannot shadow ours and a half-written file there cannot abort the run.
+exclude = ["/.lanes/", "/.worktrees/"]
