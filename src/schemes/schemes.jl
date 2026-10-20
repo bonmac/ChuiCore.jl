@@ -1,8 +1,8 @@
 # Recursion schemes (docs/research/recursion-schemes-free-laziness.md §1–2, Recommendations 1–4;
 # plan "Recursion schemes"). A scheme runs over any value whose type has a Functor instance
 # (`fmap` through `constructorclass`/`FunctorStyle`), reached through `project`. Every scheme is
-# recursive: see the stack limit in the docstrings. Costs quoted are the research measurements
-# (Apple silicon, shared machine, ±50%): treat them as orders of magnitude.
+# recursive: see the stack limit in the docstrings. The docstrings' cost figures cite
+# docs/src/performance.md (Apple silicon, shared machine): treat them as orders of magnitude.
 
 const _SALT_FIX = 0x4c1e7b9a2d5f3086 % UInt
 
@@ -15,10 +15,26 @@ further `Fix` values, so `Fix(AddF(Fix(LitF(1)), Fix(LitF(2))))` is a tree. The 
 shape (research A1). `Fix` registers no functor of its own; its layer's type does.
 `==`, `isequal` and `hash` are structural (they compare the layers).
 
-**Cost:** one heap box per node (16 B/node to store); a scheme over a `Fix` tree pays a dynamic `fmap`
-dispatch per node, ≈46–77 ns/node in the research measurements. A downstream node type that is
-its own base functor (no `Fix`, see [`ChuiCore.project`](@ref)) costs ≈21–34 ns/node, and a
-hand-written dispatch fold is 10–50× faster than `Fix` for hot paths.
+**Cost:** one heap box per node; a scheme over a `Fix` tree pays a dynamic `fmap` dispatch per
+node. Measured for `cata` on a 1023-node tree (Julia 1.13.2, `docs/src/performance.md`): ≈77
+ns and ≈47 B per node over `Fix`, against ≈18 ns/node and 0 B over a downstream node type that is
+its own base functor (no `Fix`, see [`ChuiCore.project`](@ref)); the research measured
+≈46–77 against ≈21–34 ns/node, and a hand-written dispatch fold 10–50× faster than `Fix`.
+
+The natural numbers as `Fix` layers of the Maybe functor (`nothing` is zero, `Some(n)` is one
+more than `n`):
+
+```jldoctest
+julia> using ChuiCore: Fix, cata
+
+julia> two = Fix(Some(Fix(Some(Fix(nothing)))));
+
+julia> cata(x -> x === nothing ? 0 : something(x) + 1, two)
+2
+
+julia> cata(Fix, two) == two   # the identity law
+true
+```
 """
 struct Fix
     unfix::Any
@@ -41,8 +57,20 @@ for data-dependent trees. The owner of a recursive type with a separate base fun
 `ChuiCore.project(x::MyType) = MyLayer(...)`.
 
 **Cost:** free for the default (an identity call); one field load for `Fix`. A scheme over an
-own node type allocates no `Fix` wrappers and is cheaper per node than over `Fix` (research:
-≈21–34 against ≈46–77 ns/node); phase 4 records measured budgets.
+own node type allocates no `Fix` wrappers and is cheaper per node than over `Fix` (measured for
+`cata`, Julia 1.13.2: ≈18 against ≈77 ns/node, 0 against ≈47 B/node; `docs/src/performance.md`).
+
+```jldoctest
+julia> using ChuiCore: Fix, project
+
+julia> project(Fix(Some(1)))   # one layer of a Fix tree
+Some(1)
+
+julia> project([[], []])        # any other value is its own layer
+2-element Vector{Vector{Any}}:
+ []
+ []
+```
 """
 project(x) = x
 project(f::Fix) = f.unfix
@@ -56,6 +84,15 @@ project(f::Fix) = f.unfix
 A hole of an [`ChuiCore.apo`](@ref) coalgebra: `tree` is already finished and is embedded as
 is, without unfolding further (Haskell's `Left`). See also [`ChuiCore.More`](@ref).
 Cost: a one-field wrapper (no allocation when `tree` is isbits).
+
+Count down from 4 with `Some` layers, but hand over a finished `Some(nothing)` at 2:
+
+```jldoctest
+julia> using ChuiCore: apo, Done, More
+
+julia> apo(n -> n == 0 ? nothing : Some(n > 2 ? More(n - 1) : Done(Some(nothing))), 4; embed = identity)
+Some(Some(Some(Some(nothing))))
+```
 """
 struct Done{T}
     tree::T
@@ -66,6 +103,13 @@ end
 
 A hole of an [`ChuiCore.apo`](@ref) or [`ChuiCore.futu`](@ref) coalgebra: keep unfolding from
 `seed` (Haskell's `Right` in `apo`, `Pure` in `futu`). Cost: a one-field wrapper.
+
+```jldoctest
+julia> using ChuiCore: apo, More
+
+julia> apo(n -> n == 0 ? nothing : Some(More(n - 1)), 2; embed = identity)   # always More: an ana
+Some(Some(nothing))
+```
 """
 struct More{S}
     seed::S
@@ -79,6 +123,30 @@ algebra's result for that subtree and `layer` the subtree's layer, whose holes a
 So the algebra sees the results for all descendants, not only the children. Both fields are
 `Any` (the history of a tree is not inferable; research: `histo` infers `Any`). Cost: one heap
 object per node of the folded structure, kept alive until `histo` returns.
+
+Fibonacci over the naturals as `Some` layers, reading the two previous results from the `Attr`s:
+
+```jldoctest
+julia> using ChuiCore: histo, ana
+
+julia> fib(::Nothing) = 1;
+
+julia> function fib(x::Some)
+           a = something(x)                 # an Attr: the previous result and its layer
+           a.layer === nothing && return 1
+           return a.value + something(a.layer).value
+       end;
+
+julia> [histo(fib, ana(k -> k == 0 ? nothing : Some(k - 1), n; embed = identity)) for n in 0:6]
+7-element Vector{Int64}:
+  1
+  1
+  2
+  3
+  5
+  8
+ 13
+```
 """
 struct Attr
     value::Any
@@ -91,6 +159,17 @@ end
 A hole of a [`ChuiCore.futu`](@ref) coalgebra: emit one more layer at once (Haskell's `Free`
 constructor in `futu`); its holes are again `More(seed)` or `Emit(layer)`. Cost: a one-field
 wrapper.
+
+Build the natural number 5 as `Some` layers, two layers per step:
+
+```jldoctest
+julia> using ChuiCore: futu, cata, Emit, More
+
+julia> five = futu(n -> n == 0 ? nothing : n >= 2 ? Some(Emit(Some(More(n - 2)))) : Some(More(n - 1)), 5; embed = identity);
+
+julia> cata(x -> x === nothing ? 0 : something(x) + 1, five)
+5
+```
 """
 struct Emit{L}
     layer::L
@@ -123,11 +202,21 @@ method per node type. `x` is a `Fix` tree or a value of a node type that is its 
 `ArgumentError` otherwise). Laws: `cata(Fix, x) == x`; fusion (`h ∘ alg₁ == alg₂ ∘ fmap(h)`
 implies `h ∘ cata(alg₁) == cata(alg₂)`).
 
-**Cost:** one `fmap` and one rebuilt layer per node: ≈46–77 ns/node and 16–32 B/node over `Fix`,
-≈21–34 ns/node over an own node type; a hand-written dispatch fold is 10–50× faster for hot
-paths. The return type infers when the algebra's methods agree.
+**Cost:** one `fmap` and one rebuilt layer per node. Measured (Julia 1.13.2, 1023-node tree,
+`docs/src/performance.md` and `benchmark/allocs.jl`): ≈77 ns and ≈47 B per node over `Fix`;
+≈18 ns per node and 0 B per call over an own node type. A hand-written dispatch fold is 10–50×
+faster for hot paths (research). The return type infers when the algebra's methods agree.
 
 $_COST_STACK
+
+A rose tree as nested vectors (`Vector` is a Functor; an empty vector is a leaf), counting nodes:
+
+```jldoctest
+julia> using ChuiCore: cata
+
+julia> cata(kids -> 1 + sum(kids; init = 0), [[], [[], []]])
+5
+```
 """
 cata(alg, x) = _Cata(alg)(x)
 
@@ -145,10 +234,21 @@ coalgebra maps a seed to one layer whose holes hold the next seeds. `embed` wrap
 layer: `Fix` (the default) builds a `Fix` tree; `embed = identity` builds a tree of bare layers,
 i.e. values of a node type that is its own base functor.
 
-**Cost:** one `fmap`, one layer and one `embed` per node (≈16 B/node more with `Fix`). To fold
-right away, use [`ChuiCore.hylo`](@ref), which builds no tree.
+**Cost:** one `fmap`, one layer and one `embed` per node. Measured on a 1000-node unfold of a
+natural-number functor (phase 5, BenchmarkTools, shared machine): ≈72 B/node with `embed = Fix`
+on Julia 1.13.2 and 1.10.12; ≈24 B/node (1.13.2) and ≈72 B/node (1.10.12) with
+`embed = identity`. To fold right away, use [`ChuiCore.hylo`](@ref), which builds no tree.
 
 $_COST_STACK
+
+```jldoctest
+julia> using ChuiCore: ana, cata
+
+julia> t = ana(n -> fill(n - 1, n), 3; embed = identity);   # node n has n children n - 1
+
+julia> cata(kids -> 1 + sum(kids; init = 0), t)
+16
+```
 """
 ana(coalg, seed; embed = Fix) = _Ana(coalg, embed)(seed)
 
@@ -170,6 +270,13 @@ unfold-then-fold.
 5.2 MB for `cata ∘ ana` on 131,071 nodes) and runs 3–17× faster than `cata ∘ ana`.
 
 $_COST_STACK
+
+```jldoctest
+julia> using ChuiCore: hylo
+
+julia> hylo(kids -> 1 + sum(kids; init = 0), n -> fill(n - 1, n), 3)   # the same count, no tree
+16
+```
 """
 hylo(alg, coalg, seed) = _Hylo(alg, coalg)(seed)
 
@@ -186,9 +293,28 @@ passed to `alg` is the tuple `(original, result)`, where `original === ` the inp
 stored in `x`: a `Fix` or a node) and `result` its `para` result. Use it for rewrites that must
 look at the unrewritten subtree, such as predicate pushdown.
 
-**Cost:** as [`ChuiCore.cata`](@ref) plus one 2-tuple per child.
+**Cost:** as [`ChuiCore.cata`](@ref) plus one 2-tuple per child (measured ≈45–48 B/node over an
+own node type on Julia 1.13.2, ≈76–80 B/node on 1.10.12, `docs/src/performance.md`).
 
 $_COST_STACK
+
+The size of every suffix of a natural number (as `Some` layers), using the original subtrees:
+
+```jldoctest
+julia> using ChuiCore: para, cata
+
+julia> depth(x) = x === nothing ? 0 : something(x) + 1;
+
+julia> sizes(::Nothing) = Int[];
+
+julia> sizes(x::Some) = ((orig, res) = something(x); pushfirst!(copy(res), cata(depth, orig)));
+
+julia> para(sizes, Some(Some(Some(nothing))))
+3-element Vector{Int64}:
+ 2
+ 1
+ 0
+```
 """
 para(alg, x) = _Para(alg)(x)
 
@@ -219,6 +345,13 @@ sorted list copies only the prefix and shares the rest.
 **Cost:** as [`ChuiCore.ana`](@ref) for the unfolded part; a `Done` subtree costs nothing.
 
 $_COST_STACK
+
+```jldoctest
+julia> using ChuiCore: apo, Done, More
+
+julia> apo(n -> n == 0 ? nothing : Some(n > 1 ? More(n - 1) : Done(Some(nothing))), 3; embed = identity)
+Some(Some(Some(Some(nothing))))
+```
 """
 apo(coalg, seed; embed = Fix) = _Apo(coalg, embed)(seed)
 
@@ -242,6 +375,19 @@ Fibonacci from the two previous results in one pass).
 end; the result type does not infer (`Any`), and a typed `Cofree` is deferred.
 
 $_COST_STACK
+
+The algebra sees the result for the child (`value`) and, through `layer`, the grandchild:
+
+```jldoctest
+julia> using ChuiCore: histo
+
+julia> alg(::Nothing) = 1;
+
+julia> alg(x::Some) = (a = something(x); a.layer === nothing ? 1 : a.value + something(a.layer).value);
+
+julia> histo(alg, Some(Some(Some(Some(nothing)))))   # the 5th Fibonacci number
+5
+```
 """
 histo(alg, x) = _Histo(alg)(x).value
 
@@ -267,6 +413,13 @@ whose holes are [`ChuiCore.More`](@ref)`(seed)` (continue from `seed`) or
 **Cost:** as [`ChuiCore.ana`](@ref), plus one marker per hole.
 
 $_COST_STACK
+
+```jldoctest
+julia> using ChuiCore: futu, Emit, More
+
+julia> futu(n -> n == 0 ? nothing : Some(Emit(Some(More(n - 1)))), 2; embed = identity)   # 2 layers per step
+Some(Some(Some(Some(nothing))))
+```
 """
 futu(coalg, seed; embed = Fix) = _Futu(coalg, embed)(seed)
 
@@ -300,6 +453,20 @@ Monadic catamorphism: `alg` maps a layer of results to a monadic value of class 
 $_COST_MONADIC
 
 $_COST_STACK
+
+Count the nodes of a rose tree (nested vectors), failing on a node with more than two children:
+
+```jldoctest
+julia> using ChuiCore: cataM, MaybeTag
+
+julia> count2(kids) = length(kids) > 2 ? nothing : Some(1 + sum(kids; init = 0));
+
+julia> cataM(MaybeTag(), count2, [[], [[], []]])
+Some(5)
+
+julia> cataM(MaybeTag(), count2, [[], [[], [], []]]) === nothing
+true
+```
 """
 cataM(tag, alg, x) = _CataM(tag, alg)(x)
 
@@ -326,6 +493,22 @@ the children are unfolded with `traverse` and each layer is wrapped by `embed` (
 $_COST_MONADIC
 
 $_COST_STACK
+
+Unfold a binary tree of depth `n` (nested vectors), failing for a depth over 2:
+
+```jldoctest
+julia> using ChuiCore: anaM, cata, MaybeTag
+
+julia> grow(n) = n > 2 ? nothing : Some(n == 0 ? Int[] : [n - 1, n - 1]);
+
+julia> t = anaM(MaybeTag(), grow, 2; embed = identity);
+
+julia> cata(kids -> 1 + sum(kids; init = 0), something(t))
+7
+
+julia> anaM(MaybeTag(), grow, 3; embed = identity) === nothing
+true
+```
 """
 anaM(tag, coalg, seed; embed = Fix) = _AnaM(tag, coalg, embed)(seed)
 
@@ -345,5 +528,17 @@ building no intermediate tree. `coalg` and `alg` both return monadic values of c
 $_COST_MONADIC
 
 $_COST_STACK
+
+```jldoctest
+julia> using ChuiCore: hyloM, MaybeTag
+
+julia> grow(n) = n > 2 ? nothing : Some(n == 0 ? Int[] : [n - 1, n - 1]);
+
+julia> hyloM(MaybeTag(), kids -> Some(1 + sum(kids; init = 0)), grow, 2)
+Some(7)
+
+julia> hyloM(MaybeTag(), kids -> Some(1 + sum(kids; init = 0)), grow, 5) === nothing
+true
+```
 """
 hyloM(tag, alg, coalg, seed) = _HyloM(tag, alg, coalg)(seed)

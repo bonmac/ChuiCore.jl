@@ -8,7 +8,23 @@ Aggregator for `Statistics.mean` (CC-007). The accumulator is `(float sum, count
 per element), so `typemax(Int)`-sized integers never overflow and the result is a float. Commutative.
 Elements must be real scalars: vector elements throw a `MethodError` (`float` of a vector added to a
 `Float64`); v1 has no built-in element-wise mean of vectors.
-Cost: one pass; a non-empty `AbstractArray` chunk uses Base's pairwise `sum(float, chunk)`.
+
+```jldoctest
+julia> using ChuiCore: Mean, init, partial, combine, final
+
+julia> a = partial(Mean(), init(Mean()), [1, 2, 3])   # the accumulator: (float sum, count)
+(6.0, 3)
+
+julia> final(Mean(), combine(Mean(), a, partial(Mean(), init(Mean()), [10])))
+4.0
+
+julia> final(Mean(), init(Mean()))   # empty input, as Statistics.mean(Float64[])
+NaN
+```
+
+Cost: one pass over each chunk, one `float` and one `+` per element; a non-empty `AbstractArray`
+chunk uses Base's pairwise `sum(float, chunk)`; `combine` is two `+`, `final` one `/`; no
+allocation (test item "perf allocs: built-in aggregators partial/combine/final are 0 B").
 """
 struct Mean end
 
@@ -39,8 +55,29 @@ Statistics' `corrected` (divide by `n - 1`, or by `n` when `false`). `stat` is a
 The accumulator is `(n, mean, M2)` (Welford within a chunk, Chan's parallel merge in `combine`) or
 the "no value yet" state, which is `init`'s: `Moments` is a Semigroup with no `neutral` (CC-006),
 **approximately** associative (CC-004's tolerance), and commutative. Empty input gives `NaN`, and so
-does a single element with `corrected = true`, as in Statistics. Cost: one pass, a few flops per
-element; the accumulator is a small `Union` until the first element (ADR-0001 §7).
+does a single element with `corrected = true`, as in Statistics.
+
+```jldoctest
+julia> using ChuiCore: Moments, init, partial, combine, final
+
+julia> m = Moments();   # Moments(:var; corrected = true)
+
+julia> a = partial(m, init(m), [1.0, 2.0]); b = partial(m, init(m), [3.0, 4.0]);
+
+julia> final(m, combine(m, a, b))   # Statistics.var([1.0, 2.0, 3.0, 4.0])
+1.6666666666666667
+
+julia> s = Moments(:std; corrected = false); final(s, partial(s, init(s), [1.0, 3.0]))
+1.0
+
+julia> final(m, init(m))
+NaN
+```
+
+Cost: one pass over each chunk (Welford: one division and a few multiply-adds per element);
+`combine` is one Chan merge (a handful of flops); `final` one division (and a `sqrt` for
+`:std`); no allocation (same test item as [`ChuiCore.Mean`](@ref)). The accumulator is a small
+`Union` until the first element (ADR-0001 §7).
 """
 struct Moments{S}
     corrected::Bool

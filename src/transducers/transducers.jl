@@ -8,6 +8,13 @@ Early termination (ADR-0003 §2): a reducing step returns `Reduced(acc)` to stop
 fold then stops supplying input and still runs `complete` once on `unreduced` of it. Build it with
 [`ChuiCore.reduced`](@ref); test with [`ChuiCore.isreduced`](@ref). Cost: an immutable wrapper,
 no allocation for an immutable accumulator.
+
+```jldoctest
+julia> using ChuiCore: foldxl, Map, Reduced
+
+julia> foldxl((a, x) -> x > 3 ? Reduced(a) : a + x, Map(identity), 1:10; init = 0)
+6
+```
 """
 struct Reduced{T}
     value::T
@@ -18,6 +25,16 @@ end
 
 Wrap `x` in a [`ChuiCore.Reduced`](@ref) (an already reduced value is returned as is). A reducing
 function returns this to stop the fold early. Cost: none beyond the wrapper.
+
+```jldoctest
+julia> using ChuiCore: reduced, unreduced
+
+julia> reduced(reduced(3)) == reduced(3)
+true
+
+julia> unreduced(reduced(3))
+3
+```
 """
 reduced(x) = Reduced(x)
 reduced(x::Reduced) = x
@@ -26,6 +43,13 @@ reduced(x::Reduced) = x
     unreduced(x)
 
 The value inside a [`ChuiCore.Reduced`](@ref), or `x` itself. Cost: none.
+
+```jldoctest
+julia> using ChuiCore: Reduced, unreduced
+
+julia> (unreduced(Reduced(5)), unreduced(5))
+(5, 5)
+```
 """
 unreduced(x) = x
 unreduced(x::Reduced) = x.value
@@ -34,6 +58,13 @@ unreduced(x::Reduced) = x.value
     isreduced(x)::Bool
 
 Whether `x` is a [`ChuiCore.Reduced`](@ref). Cost: a type check, folded at compile time.
+
+```jldoctest
+julia> using ChuiCore: isreduced, reduced
+
+julia> (isreduced(reduced(1)), isreduced(1))
+(true, false)
+```
 """
 isreduced(x) = x isa Reduced
 
@@ -54,6 +85,18 @@ Composing a transducer with a plain function (`Map(f) ⨟ g`) is **not supported
 Base's `ComposedFunction`, which no fold accepts.
 
 Cost: none by itself (an abstract type); each transducer's docstring states its own.
+
+```jldoctest
+julia> using ChuiCore: Transducer, Map, Filter, foldxl
+
+julia> xf = Map(abs) ⨟ Filter(isodd);   # abs first, then the filter
+
+julia> xf isa Transducer
+true
+
+julia> foldxl(+, xf, [-1, 2, -3]; init = 0)
+4
+```
 """
 abstract type Transducer end
 
@@ -63,6 +106,17 @@ abstract type Transducer end
 Transducer that sends `f(x)` downstream for each input `x`. Stateless
 ([`ChuiCore.isstateless`](@ref) is `true`). Cost: one call of `f` per element; no allocation, no
 dynamic dispatch for a concretely typed `f`.
+
+```jldoctest
+julia> using ChuiCore: foldxl, Map
+
+julia> foldxl(push!, Map(x -> x^2), 1:4; init = Int[])
+4-element Vector{Int64}:
+  1
+  4
+  9
+ 16
+```
 """
 struct Map{F} <: Transducer
     f::F
@@ -73,6 +127,13 @@ end
 
 Transducer that sends `x` downstream only when `p(x)` is `true`. Stateless. Cost: one call of `p`
 per element; no allocation.
+
+```jldoctest
+julia> using ChuiCore: foldxl, Filter
+
+julia> foldxl(+, Filter(iseven), 1:10; init = 0)
+30
+```
 """
 struct Filter{P} <: Transducer
     p::P
@@ -88,6 +149,19 @@ iteration of its result per element; no allocation when `f` returns a tuple or a
 Not to be confused with CC-007's `MapM(f, inner)`, an **aggregator** that applies `f` to each
 element before an inner aggregator: `MapM` maps one value to one value inside an aggregation,
 while `MapCat` maps one value to any number of values inside a transducer pipeline.
+
+```jldoctest
+julia> using ChuiCore: foldxl, MapCat
+
+julia> foldxl(push!, MapCat(x -> (x, -x)), 1:3; init = Int[])
+6-element Vector{Int64}:
+  1
+ -1
+  2
+ -2
+  3
+ -3
+```
 """
 struct MapCat{F} <: Transducer
     f::F
@@ -101,6 +175,16 @@ the `n`-th, so no further input is read. `n ≥ 0`; `Take(0)` reads one input (t
 no step before the first element) and stops on it without sending it downstream. Stateful (the count lives in the accumulator,
 created by `start`), so one `Take(3)` can be reused across folds. Cost: an `Int` counter per fold,
 no allocation.
+
+```jldoctest
+julia> using ChuiCore: foldxl, Take
+
+julia> foldxl(+, Take(3), Iterators.countfrom(1); init = 0)   # stops an unbounded input
+6
+
+julia> foldxl(+, Take(0), 1:5; init = 0)
+0
+```
 """
 struct Take <: Transducer
     n::Int
@@ -117,6 +201,13 @@ Transducer that sends inputs downstream while `p(x)` is `true` and stops the fol
 for which it is `false`. It keeps no state, but it is **not** stateless for parallel folds
 ([`ChuiCore.isstateless`](@ref) is `false`): per partition it would stop each partition separately.
 Cost: one call of `p` per element; no allocation.
+
+```jldoctest
+julia> using ChuiCore: foldxl, TakeWhile
+
+julia> foldxl(+, TakeWhile(<(4)), [1, 2, 3, 4, 1, 2]; init = 0)
+6
+```
 """
 struct TakeWhile{P} <: Transducer
     p::P
@@ -129,6 +220,18 @@ Transducer that sends the running accumulation downstream: for inputs `x₁, x�
 `s₁ = op(init, x₁)`, `s₂ = op(s₁, x₂)`, …. Stateful (the running value lives in the accumulator).
 Cost: one call of `op` per element; no allocation when `op` keeps the type of `init` (otherwise the
 fold loses type stability).
+
+```jldoctest
+julia> using ChuiCore: foldxl, Scan
+
+julia> foldxl(push!, Scan(+, 0), 1:5; init = Int[])
+5-element Vector{Int64}:
+  1
+  3
+  6
+ 10
+ 15
+```
 """
 struct Scan{F, T} <: Transducer
     op::F
@@ -143,7 +246,18 @@ Transducer that groups inputs into chunks of `n` and sends each full chunk downs
 `Vector{T}` (a copy, safe to keep). On `complete` it flushes the remainder as a last, shorter
 chunk, **unless the downstream has reduced** (its buffer is cleared before every downstream call,
 so nothing is pending then). `n ≥ 1`. Stateful. Cost: one buffer of capacity `n` per fold
-(created by `start`), plus one `Vector{T}` per emitted chunk.
+(created by `start`), plus one `Vector{T}` per emitted chunk (measured ≈112–126 B per chunk of
+10 `Float64` on Julia 1.13.2, `docs/src/performance.md`).
+
+```jldoctest
+julia> using ChuiCore: foldxl, Partition
+
+julia> foldxl(push!, Partition{Int}(2), 1:5; init = Vector{Int}[])
+3-element Vector{Vector{Int64}}:
+ [1, 2]
+ [3, 4]
+ [5]
+```
 """
 struct Partition{T} <: Transducer
     n::Int
@@ -161,6 +275,16 @@ A pipeline of transducers applied in data order: `Composed((a, b, c))` is `a ⨟
 `a ⨟ b` or `b ∘ a`, which flatten nested compositions into one tuple; `Composed(())` is the
 identity pipeline. Field `xfs`. Cost: none of its own; the pipeline compiles to nested
 [`ChuiCore.R`](@ref) structs with concrete types.
+
+```jldoctest
+julia> using ChuiCore: Composed, Map, Filter, foldxl
+
+julia> (Map(abs) ⨟ Filter(isodd)) == Composed((Map(abs), Filter(isodd))) == Filter(isodd) ∘ Map(abs)
+true
+
+julia> foldxl(+, Composed(()), 1:3; init = 0)   # the identity pipeline
+6
+```
 """
 struct Composed{T <: Tuple} <: Transducer
     xfs::T
@@ -182,6 +306,16 @@ transducer that opts in (`ChuiCore.isstateless(::MyXf) = true`) promises that `s
 `complete` pass the accumulator through unchanged and that `next` keeps no state. Only
 `isstateless` pipelines may run per partition, in ChuiCore's executors or downstream ones; all
 others run sequentially through [`ChuiCore.foldxl`](@ref). Cost: dispatch only, a constant.
+
+```jldoctest
+julia> using ChuiCore: isstateless, Map, Filter, Take
+
+julia> isstateless(Map(abs) ⨟ Filter(isodd))
+true
+
+julia> isstateless(Map(abs) ⨟ Take(2))
+false
+```
 """
 isstateless(_) = false
 isstateless(::Union{Map, Filter, MapCat}) = true
@@ -193,6 +327,15 @@ isstateless(x::Composed) = all(isstateless, x.xfs)
 The innermost reducing function: wraps a plain binary `op(acc, x)` (ADR-0003 §1). `next` calls
 `op`; `start` and `complete` return the accumulator unchanged. `op` may return a
 [`ChuiCore.Reduced`](@ref) to stop the fold. Field `op`. Cost: none beyond `op`.
+
+```jldoctest
+julia> using ChuiCore: Bottom, start, next, complete
+
+julia> rf = Bottom(+);
+
+julia> complete(rf, next(rf, start(rf, 1), 2))
+3
+```
 """
 struct Bottom{F}
     op::F
@@ -213,6 +356,29 @@ A stateful one also defines `start(rf::R{<:T}, acc)`, returning its own wrapper 
 construction), and `complete(rf::R{<:T}, w)`, which may flush into `rf.inner` (not after the
 downstream has reduced) and then calls `complete(rf.inner, …)` exactly once. When the downstream
 reduces, return `Reduced(wrapper)`, keeping `Reduced` outermost. Cost: none of its own.
+
+A stateless transducer that sends each input downstream twice:
+
+```jldoctest
+julia> using ChuiCore: Transducer, R, next, foldxl
+
+julia> struct Twice <: Transducer end
+
+julia> function ChuiCore.next(rf::R{Twice}, acc, x)
+           a = next(rf.inner, acc, x)
+           ChuiCore.isreduced(a) && return a       # convey a downstream stop
+           return next(rf.inner, a, x)
+       end
+
+julia> foldxl(push!, Twice(), 1:3; init = Int[])
+6-element Vector{Int64}:
+ 1
+ 1
+ 2
+ 2
+ 3
+ 3
+```
 """
 struct R{X <: Transducer, I}
     xf::X
@@ -229,6 +395,21 @@ The reducing function of the transducer `xf` in front of the binary operation `o
 existing reducing function): an [`ChuiCore.R`](@ref) struct, or a [`ChuiCore.Bottom`](@ref) for an
 empty `Composed`. Drive it with `start`, `next` and `complete`. Cost: builds an immutable struct;
 no allocation for isbits fields.
+
+```jldoctest
+julia> using ChuiCore: asrf, start, next, complete, unreduced, isreduced, Map, Take
+
+julia> rf = asrf(Map(x -> 10x) ⨟ Take(2), +);
+
+julia> a = next(rf, start(rf, 0), 1); isreduced(a)
+false
+
+julia> a = next(rf, a, 2); isreduced(a)   # Take(2) has seen its 2 inputs
+true
+
+julia> complete(rf, unreduced(a))
+30
+```
 """
 asrf(xf::Transducer, op) = R(xf, _asrf(op))
 asrf(xf::Composed, op) = _apply(xf.xfs, _asrf(op))
@@ -241,7 +422,15 @@ _apply(t::Tuple, rf) = asrf(first(t), _apply(Base.tail(t), rf))
 Protocol (ADR-0003 §2): the accumulator a fold begins with, built from the user's initial value
 `acc`. Stateful transducers create their per-fold state here (once per fold, once per partition),
 wrapping the inner accumulator; stateless ones pass `acc` through. Cost: a stateful layer's state
-(e.g. one buffer for `Partition`); nothing for stateless layers.
+(e.g. one buffer for `Partition`); nothing for stateless layers. `start` itself is pure: the state
+is fresh, and only [`ChuiCore.next`](@ref) and [`ChuiCore.complete`](@ref) mutate it.
+
+```jldoctest
+julia> using ChuiCore: asrf, start, Map
+
+julia> start(asrf(Map(abs), +), 0)   # a stateless layer passes the accumulator through
+0
+```
 """
 start(::Bottom, acc) = acc
 start(rf::R, acc) = start(rf.inner, acc)
@@ -252,6 +441,19 @@ start(rf::R, acc) = start(rf.inner, acc)
 Protocol (ADR-0003 §2): one reduction step; returns the new accumulator, or a
 [`ChuiCore.Reduced`](@ref) to stop the fold. Every transducer defines a method for `R{<:T}`.
 Cost: the step of each layer; stateless layers neither allocate nor dispatch dynamically.
+
+Effects: a stateful layer mutates the per-fold state held inside `acc` (created by
+[`ChuiCore.start`](@ref); e.g. `Partition` `push!`es into and `empty!`s its buffer), so an
+accumulator is used once. Stateless layers have no effects of their own.
+
+```jldoctest
+julia> using ChuiCore: asrf, next, Filter
+
+julia> rf = asrf(Filter(iseven), +);
+
+julia> (next(rf, 10, 2), next(rf, 10, 3))   # 3 is filtered out
+(12, 10)
+```
 """
 next(rf::Bottom, acc, x) = rf.op(acc, x)
 
@@ -262,6 +464,24 @@ Protocol (ADR-0003 §2): the completion step, run **exactly once** per fold, als
 termination (on the unreduced accumulator). Stateful layers flush pending state into their
 downstream (never after it has reduced), unwrap their state and complete the inner reducing
 function once. Cost: a layer's flush, if any.
+
+Effects: a stateful layer empties the per-fold state held inside `acc` (created by
+[`ChuiCore.start`](@ref)) as it flushes it. Stateless layers have no effects of their own.
+
+`Partition` flushes its last, shorter chunk on `complete`:
+
+```jldoctest
+julia> using ChuiCore: asrf, start, next, complete, Partition
+
+julia> rf = asrf(Partition{Int}(2), push!);
+
+julia> a = next(rf, next(rf, next(rf, start(rf, Vector{Int}[]), 1), 2), 3);
+
+julia> complete(rf, a)
+2-element Vector{Vector{Int64}}:
+ [1, 2]
+ [3]
+```
 """
 complete(::Bottom, acc) = acc
 complete(rf::R, acc) = complete(rf.inner, acc)

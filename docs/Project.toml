@@ -1,7 +1,14 @@
 # Docs environment (ADR-0008). ChuiCore itself is added by `julia scripts/ci.jl docs`
-# (Pkg.develop of the checkout), so it is not listed here.
+# (Pkg.develop of the checkout), so it is not listed here. Accessors, Supposition and Test load
+# ChuiCore's extensions in the optics and law-kit tutorials.
 [deps]
+Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Supposition = "5a0628fe-1738-4658-9b6d-0b7605a9755b"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
+Accessors = "0.1.45"
 Documenter = "1"
+Supposition = "0.3"
+Test = "1"
