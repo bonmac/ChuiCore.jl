@@ -212,6 +212,30 @@ $_KIT_DOC_COMMON
 """
 function test_arrow_laws end
 
+"""
+    test_lens_laws(lens, gen_s, gen_v; eq = default_eq(lens), laws, max_examples)
+
+Lens laws for `lens` (ADR-0004 §2), getting by calling the lens and setting with
+[`ChuiCore.set`](@ref): `get-set` (`set(s, l, l(s)) == s`), `set-get` (`l(set(s, l, v)) == v`) and
+`set-set` (`set(set(s, l, v₁), l, v₂) == set(s, l, v₂)`). `gen_s` yields whole values, `gen_v`
+values for the focus. Works for any lens [`ChuiCore.set`](@ref) accepts, compositions included.
+
+$_KIT_DOC_COMMON
+"""
+function test_lens_laws end
+
+"""
+    test_prism_laws(prism, gen_s, gen_v; eq = default_eq(prism), laws, max_examples)
+
+Prism laws for `prism` (ADR-0004 §2): `review-preview` (`preview(p, review(p, v)) == Some(v)` for
+every focus `v` from `gen_v`) and `preview-review` (if `preview(p, s) == Some(a)` then
+`review(p, a) == s`, for every `s` from `gen_s`; values that are not the prism's case pass).
+Include values of the prism's case in `gen_s`, or `preview-review` checks nothing.
+
+$_KIT_DOC_COMMON
+"""
+function test_prism_laws end
+
 # A misspelled name in a kit's `laws` keyword would otherwise run nothing and pass silently.
 function _check_selected(laws, selected)
     selected === nothing && return nothing
@@ -238,4 +262,6 @@ const _KITS = (
     :test_profunctor_laws => :_profunctor_laws,
     :test_category_laws => :_category_laws,
     :test_arrow_laws => :_arrow_laws,
+    :test_lens_laws => :_lens_laws,
+    :test_prism_laws => :_prism_laws,
 )

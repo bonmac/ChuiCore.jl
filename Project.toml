@@ -6,18 +6,23 @@ authors = ["Boniface Makone"]
 [deps]
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 CompositionsBase = "a33af91c-f02d-484b-be07-31d278c5ca2b"
+ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
 
 [weakdeps]
+Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
 Supposition = "5a0628fe-1738-4658-9b6d-0b7605a9755b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [extensions]
+ChuiCoreAccessorsExt = "Accessors"
 ChuiCoreSuppositionExt = ["Test", "Supposition"]
 ChuiCoreTestExt = "Test"
 
 [compat]
+Accessors = "0.1.45"
 Compat = "4.10"
 CompositionsBase = "0.1.2"
+ConstructionBase = "1.6"
 Supposition = "0.3"
 Test = "1"
 julia = "1.10"
