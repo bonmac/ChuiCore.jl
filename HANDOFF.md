@@ -5,11 +5,10 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 ## State
 
-- Branch: `feat/phase5-docs` (worktree `.worktrees/phase5-docs`), from main 4a0ea88 (phases 1–4
-  merged). **Phase 5 (docs) implemented and committed; reviewer FINAL VERDICT (round 2):
-  APPROVE WITH NITS (round 1: B1, S1, S2, N1–N4, all fixed in 55e234b/0f542b8; nits N6–N9
-  open, below); not merged.**
-  Plan `docs/superpowers/plans/2026-10-20-phase5-docs.md`.
+- main a8404ca: phases 1–5 merged (phase 5 reviewer FINAL VERDICT: APPROVE WITH NITS).
+- Branch `feat/banner-init` (worktree `.worktrees/banner-init`), from main a8404ca: ChuiCore's
+  own `__init__` banner and review nit N6. Committed, not merged; review status in the lane
+  report to the lead.
 - Factory 0.2.6, package profile. Contracts binding since 2026-10-19.
 - Version still 0.0.1. **v0.1.0 is not tagged or registered**: that waits for the user (checklist
   below).
@@ -38,7 +37,7 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 ## v0.1.0 release checklist (for the lead; `/release-check 0.1.0`)
 
-1. Merge `feat/phase5-docs` into main after the reviewer's FINAL verdict (reviewed merge).
+1. Merge `feat/banner-init` into main after the reviewer's FINAL verdict (reviewed merge).
 2. On main: `julia scripts/changelog.jl fold --dry-run`, then `fold` (moves every
    `changelog.d/*.md` under `## Unreleased`, deletes the fragments).
 3. Bump `Project.toml` `version = "0.1.0"`; move `## Unreleased` under `## [0.1.0] - <date>`.
@@ -60,9 +59,8 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 ## Open review nits (round 2; none blocks the merge)
 
-- N6: the `binding_conflicts` docstring example (`src/banner.jl` ~35–53) depends on `Main`'s
-  modules: it passes once per process (as CI runs it) but fails if doctests run twice in one
-  process (leftover `DocA`). Fix with unique module names; fits the follow-up banner lane.
+- N6 (the `binding_conflicts` docstring example failed when doctests ran twice in one process):
+  fixed on `feat/banner-init`.
 - N7: the law-kit tutorials use `Test.anynonpass` / `ts.results`, Test internals (fine for
   stable-only doctests); add a note.
 - N8: the traverse-allocation evidence came from a scratch script, not in the repo.
@@ -71,8 +69,6 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 ## Deferred (with reasons)
 
-- ChuiCore's own `__init__` banner call (the brief's "In `__init__`, when `isinteractive()`"):
-  not implemented in phases 3–5; the lead assigned it to a follow-up lane after this merges.
 - Factory blind spot: `scripts/check_docs.jl` reads a Documenter cross-reference link whose
   target is a bare `@ref` (no explicit target) in Markdown as a stale path; pages use the
   explicit-target form `@ref ChuiCore.x`. A factory fix (T3).
@@ -84,10 +80,23 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 | Lane | Agent | File scope | Status | Report |
 |---|---|---|---|---|
-| phase5-docs | the lead's teammate core-p5 (this lane) | `docs/**`, `README.md`, `HANDOFF.md`, `changelog.d/phase5-docs.md`, docstrings in `src/**`, doctest tests in `test/**` | committed, not merged | to the lead |
+| banner-init | the lead's teammate (this lane) | `src/**`, `test/**`, `docs/**`, `HANDOFF.md`, `changelog.d/banner-init.md` | committed, not merged | to the lead |
 
-Sub-lanes p5-algebra, p5-classes, p5-folds, p5-optics (subagents, one worktree each, disjoint
-files) reported, were merged into `feat/phase5-docs`, and are closed.
+phase5-docs and its sub-lanes are merged (a8404ca) and closed.
+
+## The `__init__` banner (feat/banner-init)
+
+- `__init__` (end of `src/ChuiCore.jl`): `isinteractive() && Base.invokelatest(_init_banner, stderr, @__MODULE__)`;
+  `_init_banner` (`src/banner.jl`) catches any error, and guards its own `@debug` log too.
+- Why `invokelatest`: a direct call compiled the banner into the package image (+0.3 MB native
+  code, about +3–5 ms on every 1.10 load). With the barrier, non-interactive load equals main's;
+  the price is about 0.25–0.3 s to compile the banner in interactive sessions (direct call: about
+  0.1 s). **Lead's call** if a faster interactive banner is worth the per-load cost. Evidence:
+  `.lanes/evidence/banner-init-load-{release,lts}-d150a86.txt` (script `banner-init-load-script.jl`
+  beside them; gitignored).
+- Tests: `test/banner_init_tests.jl` (fresh `julia -i` subprocesses: prints with a planted
+  clash; silent with `CHUI_QUIET_CONFLICTS` and when non-interactive; a read-only `stderr`, with and
+  without `JULIA_DEBUG=ChuiCore`, does not break `using`).
 
 ## Evidence
 
