@@ -7,7 +7,8 @@ DocTestSetup = :(using ChuiCore)
 When two packages you `using` both export a name and mean different things by it, Julia makes the
 bare name ambiguous: you get an error (or, on older versions, a warning) only when you use it.
 The banner tells you up front, at load time, like dplyr's "The following objects are masked"
-notice. Chui packages call it from their `__init__` in interactive sessions.
+notice. ChuiCore prints it for its own exports when you load it in an interactive session, and
+other Chui packages do the same from their `__init__`.
 
 Two public functions do the work: `ChuiCore.binding_conflicts(mod)` computes the conflicts and
 `ChuiCore.conflict_banner(io, mod)` prints them.
@@ -96,10 +97,37 @@ Pair{Symbol, Vector{Module}}[]
 
 (`withenv` only makes the example independent of your own setting of the variable.)
 
+## ChuiCore's own banner
+
+`using ChuiCore` in an interactive session (the REPL, or `julia -i`) runs the banner for
+ChuiCore's own exports and prints it to `stderr`. With a module of yours that exports `chain` and
+`papply` loaded first:
+
+```julia
+julia> module MyTools; export chain, papply; chain() = 1; papply() = 2; end;
+
+julia> using ChuiCore
+── Conflicts with ChuiCore ────────────────────────────────
+✖ chain   also exported by Main.MyTools
+✖ papply  also exported by Main.MyTools
+ℹ Where both are `using`ed, these names are ambiguous: qualify them, e.g. `ChuiCore.chain` or `Main.MyTools.chain`.
+  Silence this notice with ENV["CHUI_QUIET_CONFLICTS"] = "1".
+```
+
+It runs whenever ChuiCore is *loaded* in an interactive session: `__init__` cannot tell `using`
+from `import`, so it also prints on `import ChuiCore`, and when ChuiCore loads as a dependency of
+another package (`using ChuiTypes`). In those cases ChuiCore's exports are not brought into
+`Main`, so the listed names are not actually ambiguous there; set `CHUI_QUIET_CONFLICTS` if
+that notice is noise for you. Scripts, tests and CI (non-interactive runs) never see it, and
+neither does a session with `CHUI_QUIET_CONFLICTS` set (below). It cannot break the load: if printing the banner fails (a
+closed or read-only `stderr`, say), `using ChuiCore` still succeeds, and the error is logged at
+debug level (`JULIA_DEBUG=ChuiCore` shows it).
+
 ## Calling it from a package
 
-A downstream package (ChuiTypes, ChuiFrames, or your own) calls it from its `__init__`, only in
-interactive sessions so that scripts, tests and CI logs stay quiet:
+A downstream package (ChuiTypes, ChuiFrames, or your own) calls it from its `__init__`, the way
+ChuiCore does: only in interactive sessions, so that scripts, tests and CI logs stay quiet, and
+inside a `try`, so that a failing banner cannot break `using MyPackage`:
 
 ```julia
 module MyPackage
@@ -109,7 +137,12 @@ using ChuiCore
 export summarise
 
 function __init__()
-    isinteractive() && ChuiCore.conflict_banner(stderr, @__MODULE__)
+    isinteractive() || return nothing
+    try
+        # `invokelatest` keeps the banner's code out of the package image (see the costs below).
+        Base.invokelatest(ChuiCore.conflict_banner, stderr, @__MODULE__)
+    catch
+    end
     return nothing
 end
 
@@ -153,6 +186,17 @@ The conflicts themselves remain: a silenced banner just stops reminding you to w
   silenced.
 - Both read global state (what is loaded) and are meant for package load or an occasional check,
   not for loops.
+- **ChuiCore's `__init__`:** a non-interactive `using ChuiCore` pays one `isinteractive()` read;
+  its load time is the same as before ChuiCore had an `__init__`, and it is what ADR-0009's
+  load budgets measure. An interactive load compiles and runs the banner: about 0.25–0.3 s more
+  than a non-interactive one on Julia 1.13.2 and 1.10.12 (about 0.33 s in all, over the
+  non-interactive `load_ms` budgets of 75 ms on 1.13 and 100 ms on 1.10; ADR-0009 sets no interactive budget). A direct call from
+  `__init__` (no `invokelatest`) would cut that to about 0.1 s but would compile the banner into
+  the package image (about 0.33 MB more native code) and add about 3–5 ms to *every* load on
+  1.10, interactive or not (within noise on 1.13). (Fresh-process medians, Apple silicon, loaded
+  machine, 2026-10-20; indicative; evidence
+  `.lanes/evidence/banner-init-load-{release,lts}-d150a86.txt` and
+  `.lanes/evidence/banner-init-imagesize-{release,lts}-aaf9daf.txt`.)
 
 Reference: [`ChuiCore.binding_conflicts`](@ref ChuiCore.binding_conflicts),
 [`ChuiCore.conflict_banner`](@ref ChuiCore.conflict_banner).
