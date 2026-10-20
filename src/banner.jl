@@ -39,14 +39,13 @@ julia> module DocB; export f; f() = 2; end;
 
 julia> module DocC; export sum; Base.sum(::Val{:doc}) = 1; end;   # a method on Base.sum
 
-julia> r = ChuiCore.binding_conflicts(DocA);
+julia> r = Dict(ChuiCore.binding_conflicts(DocA));   # name => the other modules
 
-julia> [p.first for p in r]    # `f` clashes with DocB's; `only_a` clashes with nothing
-1-element Vector{Symbol}:
- :f
-
-julia> DocB in only(r).second
+julia> DocB in r[:f]                        # `f` clashes with DocB's `f`
 true
+
+julia> DocB in get(r, :only_a, Module[])    # `only_a` does not
+false
 
 julia> ChuiCore.binding_conflicts(DocC)   # still Base's binding: not a conflict
 Pair{Symbol, Vector{Module}}[]
@@ -106,10 +105,17 @@ Prints nothing when there are no conflicts. Returns the conflicts vector.
 Silenced when the environment variable `CHUI_QUIET_CONFLICTS` is `"1"` or `"true"` (any case):
 it then prints nothing, does not compute the conflicts, and returns `nothing`.
 
-Intended use, in a package's module:
+Intended use, in a package's module (ChuiCore's own `__init__` does the same for its exports):
 
 ```julia
-__init__() = isinteractive() && ChuiCore.conflict_banner(stderr, @__MODULE__)
+function __init__()
+    isinteractive() || return nothing
+    try   # a failing banner must not break `using MyPackage`
+        Base.invokelatest(ChuiCore.conflict_banner, stderr, @__MODULE__)   # keeps it out of the image
+    catch
+    end
+    return nothing
+end
 ```
 
 `__init__` runs once, so the banner covers only modules loaded **before** the call; a package
@@ -157,4 +163,20 @@ function conflict_banner(io::IO, mod::Module)
     println(io, "ℹ Where both are `using`ed, these names are ambiguous: qualify them, e.g. `", mod, ".", n, "` or `", first(ms), ".", n, "`.")
     println(io, "  Silence this notice with ENV[\"CHUI_QUIET_CONFLICTS\"] = \"1\".")
     return conflicts
+end
+
+# ChuiCore's own banner, from `__init__` (in ChuiCore.jl) in interactive sessions only. A banner
+# failure must never break `using ChuiCore`: it is caught and logged at debug level
+# (`JULIA_DEBUG=ChuiCore` shows it). The log write is guarded too: when the banner failed because
+# stderr is broken, the logger writes to that same stderr and would throw again.
+function _init_banner(io::IO, mod::Module)
+    try
+        conflict_banner(io, mod)
+    catch err
+        try
+            @debug "ChuiCore: the name-conflict banner failed" exception = (err, catch_backtrace())
+        catch
+        end
+    end
+    return nothing
 end
