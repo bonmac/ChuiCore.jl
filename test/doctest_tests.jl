@@ -1,7 +1,8 @@
 # Doctests and their coverage (ecosystem ADR-0008 §3).
 # - :doctest runs every jldoctest in the docstrings and in docs/src (tutorials included). Printed
 #   types and errors differ between Julia versions, so runtests.jl skips :doctest when
-#   CI_STABLE=false (the lts and pre CI jobs); `julia scripts/ci.jl docs` runs them too.
+#   CI_STABLE=false (the lts and pre CI jobs), or when CI_STABLE is unset and VERSION < STABLE_MIN;
+#   `julia scripts/ci.jl docs` runs them too.
 #   Law-kit examples never filter the test summary: they send it to devnull and show
 #   `Test.anynonpass(ts)`, so a failing law throws and fails its doctest (a filter that
 #   deletes the summary would also delete the error and let a failing law pass).
