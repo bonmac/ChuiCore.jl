@@ -5,13 +5,22 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 ## State
 
-- main a8404ca: phases 1–5 merged (phase 5 reviewer FINAL VERDICT: APPROVE WITH NITS).
-- Branch `feat/banner-init` (worktree `.worktrees/banner-init`), from main a8404ca: ChuiCore's
-  own `__init__` banner and review nit N6. Committed, not merged; review status in the lane
-  report to the lead.
+- main e124ed3: phases 1–5 and the `__init__` banner merged (banner reviewer: APPROVE WITH NITS).
+- **0.0.1 snapshot release prepared** (user's decision 2026-10-20: register a 0.0.1 snapshot in
+  ChuiRegistry now, per ecosystem ADR-0004, so ChuiTypes and ChuiFrames can depend on a released
+  ChuiCore; v0.1.0 later). Branch `feat/release-001` (worktree `.worktrees/release-001`): the
+  9 fragments folded under `## [0.0.1] - 2026-10-20`, `changelog.d/` empty. Release gate green on
+  1.13.2 and 1.10.12 (evidence `.lanes/evidence/tests-952f9d7.txt`, `tests-lts-952f9d7.txt` in
+  that worktree); `ci.jl contracts` NOT RUN (waiting: no upstreams). Not merged.
+- **Open finding (lead to decide before tagging):** a fresh clone's plain `]test` on Julia
+  1.10.12 fails 1 of 3369 (the `:doctest` item: `Test.anynonpass` is not defined on 1.10, plus
+  two output-format diffs in `docs/src/tutorials/optics.md`). `test/runtests.jl` skips `:doctest`
+  only when `CI_STABLE=false`, not by Julia version. With `CI_STABLE=false` the fresh clone passes
+  3262/3262 on 1.10; on 1.13 a plain `]test` passes 3369/3369. Fix belongs to a `test/` lane.
+- **Waiting for the user**: merge to main, push main to GitHub, tag `v0.0.1`, register in
+  ChuiRegistry (steps in the release-manager report to the lead). Nothing is tagged or registered.
 - Factory 0.2.6, package profile. Contracts binding since 2026-10-19.
-- Version still 0.0.1. **v0.1.0 is not tagged or registered**: that waits for the user (checklist
-  below).
+- Version 0.0.1 in `Project.toml`. The v0.1.0 checklist below applies again at the next release.
 
 ## What phase 5 delivered
 
@@ -32,7 +41,9 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 ## Decisions waiting (★, for the lead to take to the user)
 
-1. Release v0.1.0 (checklist below): tag, register in ChuiRegistry, record in `<root>/releases.md`.
+1. Release the 0.0.1 snapshot (prepared on `feat/release-001`): merge, push main, tag `v0.0.1`,
+   register in ChuiRegistry, record in `<root>/releases.md` and `compat-matrix.md`. v0.1.0 later
+   (checklist below).
 2. Pushing the repo and enabling docs deployment (`CHUI_DOCS_REPO`, a deploy key): outward actions.
 
 ## v0.1.0 release checklist (for the lead; `/release-check 0.1.0`)
