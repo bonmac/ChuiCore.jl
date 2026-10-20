@@ -52,6 +52,8 @@ declares [`ChuiCore.isstateless`](@ref).
 
 Composing a transducer with a plain function (`Map(f) ⨟ g`) is **not supported**: it builds
 Base's `ComposedFunction`, which no fold accepts.
+
+Cost: none by itself (an abstract type); each transducer's docstring states its own.
 """
 abstract type Transducer end
 
@@ -95,7 +97,8 @@ end
     Take(n)
 
 Transducer that sends the first `n` inputs downstream, then stops the fold (`Reduced`) right after
-the `n`-th, so no further input is read. `n ≥ 0`. Stateful (the count lives in the accumulator,
+the `n`-th, so no further input is read. `n ≥ 0`; `Take(0)` reads one input (the protocol has
+no step before the first element) and stops on it without sending it downstream. Stateful (the count lives in the accumulator,
 created by `start`), so one `Take(3)` can be reused across folds. Cost: an `Int` counter per fold,
 no allocation.
 """

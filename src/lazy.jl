@@ -59,8 +59,7 @@ For lazy *sequences*, use `Base.Iterators` (fused at compile time, no allocation
 a shared value or structure computed on demand.
 
 Cost (indicative): construction allocates the cell and a `ReentrantLock` (a few small heap
-objects). A forced read is one acquire load plus a field read, no allocation: about 0.7 ns per
-read when inlined in a hot loop (this implementation, 1.10.12 and 1.13.2), and 5.7–6.2 ns per
+objects). A forced read is one acquire load plus a field read, no allocation: 5.7–6.2 ns per
 non-inlined call in the research prototype (`median(@benchmark force(x))`), against about 2 ns for
 an unsynchronised cell that is provably racy (research §5). `force(::Lazy{T})` infers `T`. The
 first force takes the lock once.

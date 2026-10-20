@@ -30,7 +30,8 @@ abstract type Coproduct{F, G} end
     Inl{F, G}(x)
 
 The left injection of a [`ChuiCore.Coproduct`](@ref)`{F,G}` (`x isa F`). `==`, `isequal` and
-`hash` are structural; `Inl` and `Inr` values are never equal.
+`hash` are structural; `Inl` and `Inr` values are never equal. Cost: one wrapper with an `Any`
+field (a heap allocation; dispatch on the payload is dynamic).
 """
 struct Inl{F, G} <: Coproduct{F, G}
     x::Any
@@ -40,7 +41,8 @@ end
     Inr{F, G}(x)
 
 The right injection of a [`ChuiCore.Coproduct`](@ref)`{F,G}` (`x` in `G`, itself possibly an
-injection into a nested coproduct). `==`, `isequal` and `hash` are structural.
+injection into a nested coproduct). `==`, `isequal` and `hash` are structural. Cost: as
+[`ChuiCore.Inl`](@ref), one wrapper per nesting level.
 """
 struct Inr{F, G} <: Coproduct{F, G}
     x::Any
@@ -58,7 +60,8 @@ Base.hash(a::Inr{F, G}, h::UInt) where {F, G} = hash(a.x, hash(Coproduct{F, G}, 
 
 Constructor-class tag (ADR-0001 §3) of every [`ChuiCore.Coproduct`](@ref): Functor and
 Traversable, delegating to the payload's instance (an `ArgumentError` if the payload has none).
-A singleton: dispatch on it costs nothing at run time.
+A singleton. Cost: dispatch on the tag is free; `fmap`/`traverse` cost one dynamic dispatch on the
+payload plus its instance's own cost and one new wrapper.
 """
 struct CoproductTag end
 
@@ -146,6 +149,7 @@ abstract type Free end
     Pure(x)
 
 A finished [`ChuiCore.Free`](@ref) program with result `x`; `pure(FreeTag(), x) == Pure(x)`.
+Cost: a one-field wrapper; `chain(f, Pure(x))` calls `f(x)` directly.
 """
 struct Pure{T} <: Free
     value::T
@@ -168,7 +172,8 @@ end
 A [`ChuiCore.Free`](@ref) program that performs the instruction `op` and continues with `k`
 applied to the instruction's answer. `k` is an internal continuation tree: build `Impure`
 values with [`ChuiCore.liftF`](@ref) and `chain`, not by hand. Field `op` is public (an
-interpreter dispatches on it).
+interpreter dispatches on it). Cost: one heap object per instruction plus one tree node per
+`chain`; see [`ChuiCore.Free`](@ref) for the per-instruction interpretation cost.
 """
 struct Impure <: Free
     op::Any
@@ -180,7 +185,7 @@ end
 
 Constructor-class tag (ADR-0001 §3) of [`ChuiCore.Free`](@ref) programs: Functor, Applicative
 (`pure(FreeTag(), x) == Pure(x)`), Monad. `chain` and `fmap` on an `Impure` are O(1) (they
-append to the continuation tree). A singleton: dispatch on it costs nothing at run time.
+append to the continuation tree). A singleton. Cost: dispatch on the tag is free.
 """
 struct FreeTag end
 

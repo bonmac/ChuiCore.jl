@@ -173,11 +173,14 @@ end
     @test C.interpret(incr, leftprog(10)) == 10
     run(n) = C.interpret(incr, leftprog(n))
     run(1000)
-    t(n) = minimum(@elapsed(run(n)) for _ in 1:5)
-    t3, t4 = t(1_000), t(10_000)
-    ratio = t4 / t3
-    @info "free: left-associated binds" t3 t4 ratio
-    @test ratio < 40     # quadratic would be ≈ 100
+    # Allocation, not time (review N1): deterministic on a loaded machine. Linear growth gives a
+    # ratio near 10; the classic encoding re-wraps the continuation chain per bind (≈ 100).
+    alloc(n) = @allocated run(n)
+    alloc(1_000)
+    a3, a4 = alloc(1_000), alloc(10_000)
+    ratio = a4 / a3
+    @info "free: left-associated binds (bytes)" a3 a4 ratio
+    @test ratio < 20
     # Deep programs never overflow the stack: the interpreter is a loop.
     @test C.interpret(incr, leftprog(100_000)) == 100_000
     @test C.interpret(_ -> nothing, countdown(1_000_000)) === :done

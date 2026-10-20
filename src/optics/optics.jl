@@ -46,9 +46,10 @@ new value and never mutates the input:
 
 - `Tuple`: a new tuple (the index must be an integer in bounds);
 - `NamedTuple`: a new named tuple, the index an integer position or a `Symbol` name;
-- `AbstractArray`, `AbstractDict`: a **copy** with the element replaced (`similar` + `copyto!`,
-  widening the element type with `promote_type` when the new value does not fit; `copy` for
-  dictionaries).
+- `AbstractArray`: a **copy** with the element replaced (`similar` + `copyto!`), widening the
+  element type with `promote_type` when the new value does not fit;
+- `AbstractDict`: a `copy` with the entry replaced; the value type is **not** widened, so a value
+  that does not convert throws (`set(Dict(:a => 1), IndexLens(:a), 1.5)` is an `InexactError`).
 
 `IndexLens((1, 2))` focuses the element at the index `(1, 2)` (one tuple-valued index);
 `IndexLens(1, 2)` focuses `x[1, 2]`.
@@ -244,7 +245,13 @@ end
 # test_prism_laws(prism, gen_s, gen_v)
 function _prism_laws(prism, eq)
     return (
-        Law("review-preview", (2,), v -> eq(preview(prism, review(prism, v)), Some(v))),
+        # `eq` compares foci, never `Some` wrappers, so a user `eq` such as `≈` works (review N4).
+        Law(
+            "review-preview", (2,), function (v)
+                m = preview(prism, review(prism, v))
+                return m !== nothing && eq(m.value, v)
+            end
+        ),
         Law(
             "preview-review", (1,), function (s)
                 m = preview(prism, s)

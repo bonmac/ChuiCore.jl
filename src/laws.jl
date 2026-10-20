@@ -219,6 +219,7 @@ Lens laws for `lens` (ADR-0004 §2), getting by calling the lens and setting wit
 [`ChuiCore.set`](@ref): `get-set` (`set(s, l, l(s)) == s`), `set-get` (`l(set(s, l, v)) == v`) and
 `set-set` (`set(set(s, l, v₁), l, v₂) == set(s, l, v₂)`). `gen_s` yields whole values, `gen_v`
 values for the focus. Works for any lens [`ChuiCore.set`](@ref) accepts, compositions included.
+Cost: at most three `set`s and two gets per sample combination.
 
 $_KIT_DOC_COMMON
 """
@@ -230,7 +231,10 @@ function test_lens_laws end
 Prism laws for `prism` (ADR-0004 §2): `review-preview` (`preview(p, review(p, v)) == Some(v)` for
 every focus `v` from `gen_v`) and `preview-review` (if `preview(p, s) == Some(a)` then
 `review(p, a) == s`, for every `s` from `gen_s`; values that are not the prism's case pass).
-Include values of the prism's case in `gen_s`, or `preview-review` checks nothing.
+Include values of the prism's case in `gen_s`, or `preview-review` checks nothing. `eq(a, b)`
+compares foci and whole values, never `Some` wrappers (`review-preview` checks that `preview`
+matches, then `eq(focus, v)`), so `eq = ≈` works on numeric foci. Cost: one `preview` and one
+`review` per sample (each kit runs at most 12 samples per argument).
 
 $_KIT_DOC_COMMON
 """

@@ -67,8 +67,13 @@ Fold pre-partitioned input: `parts` is an `AbstractVector` of iterables, in orde
   single `init()`; `merge` is not called.
 
 The result is defined when `merge` is associative on the accumulator type, `init()` is an identity
-of `merge`, and `xf` and `op` are **pure**: partitions run concurrently and may run past a stop
-point (their effects happen, their results are discarded). Effectful pipelines use `foldxl`. ChuiTypes must not run `foldparts`/`foldxt` on unbounded
+of `merge`, `xf` and `op` are **pure**, and **a `Reduced` returned by `op` depends only on the
+element, not on the accumulator**. Each partition starts from its own `init()`, so a stop that
+depends on the accumulator (`op(a, x) = a + x > 10 ? reduced(a) : a + x`, a "first `n` rows"
+`op`) is decided per partition, and the result then depends on the partitioning (pinned by a test:
+`[1:3, 4:10]` gives `15`, `foldxl` over `1:10` gives `10`). Use `foldxl`, or a `Take`/`TakeWhile`
+transducer (which makes the pipeline stateful and so sequential), for such stops. Partitions run
+concurrently and may run past a stop point (their effects happen, their results are discarded). Effectful pipelines use `foldxl`. ChuiTypes must not run `foldparts`/`foldxt` on unbounded
 or effectful streams.
 
 Cost: one task and one `init()` per partition, plus the per-element cost of `foldxl`.
@@ -118,7 +123,8 @@ input), with the same rules: `init` a factory, `merge` required, in-order mergin
 sequential fold when `xf` is not [`ChuiCore.isstateless`](@ref). Any input other than an
 `AbstractVector` (a range is one) throws an `ArgumentError`: generators, sets and zips are
 rejected rather than copied (collect first, or use `foldxl`). `xf` and `op` must
-be pure. With an identity `init`, the result does not depend on `ntasks`. Like `foldparts`, it
+be pure. With an identity `init`, and no `Reduced` from `op` that depends on the accumulator
+(see `foldparts`), the result does not depend on `ntasks`. Like `foldparts`, it
 waits for every task before returning, and a partition's exception (also after a `Reduced`)
 surfaces as a `TaskFailedException`.
 

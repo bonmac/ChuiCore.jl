@@ -137,7 +137,9 @@ fmap(::NotFunctor, f, x) = _notinstance(x, :Functor)
 Applicative apply (Haskell `<*>`): applies the functions held by `ff` to the values held by `fx`.
 Dispatches on `ff`'s tag: `ap(ApplicativeStyle(constructorclass(typeof(ff))), ff, fx)`. A type
 that is not an Applicative throws an `ArgumentError`, and so do operands of two different classes
-(`ap([f], Some(1))`). Trait dispatch is free; for `Array` the
+(`ap([f], Some(1))`). Instance methods **must type the style argument**,
+`ap(::IsApplicative, ff::T, fx::T)`: one written `ap(_, ff::T, fx::T)` is ambiguous with that
+mismatch fallback `ap(::IsApplicative, ff, fx)`. Trait dispatch is free; for `Array` the
 result allocates one `Vector` of `length(ff) * length(fx)` elements.
 """
 ap(ff, fx) = ap(ApplicativeStyle(constructorclass(typeof(ff))), ff, fx)
@@ -163,7 +165,9 @@ chain(::NotMonad, f, m) = _notinstance(m, :Monad)
 The Alternative choice (Haskell `<|>`), a monoid with identity [`zeroalt`](@ref)`(tag)`: for
 Maybe the first non-`nothing`, for `Array` `vcat(a, b)`. Dispatches on `a`'s tag; a type that is
 not an Alternative throws an `ArgumentError`, and so do operands of two different classes
-(`alt([1], Some(1))`). Trait dispatch is free.
+(`alt([1], Some(1))`). Instance methods must type the style argument,
+`alt(::IsAlternative, a::T, b::T)`: an untyped style is ambiguous with the mismatch fallback
+`alt(::IsAlternative, a, b)`. Trait dispatch is free.
 """
 alt(a, b) = alt(AlternativeStyle(constructorclass(typeof(a))), a, b)
 alt(::NotAlternative, a, b) = _notinstance(a, :Alternative)

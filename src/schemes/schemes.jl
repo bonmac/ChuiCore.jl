@@ -41,8 +41,8 @@ for data-dependent trees. The owner of a recursive type with a separate base fun
 `ChuiCore.project(x::MyType) = MyLayer(...)`.
 
 **Cost:** free for the default (an identity call); one field load for `Fix`. A scheme over an
-own node type with `Any` child fields measured ≈10–12 ns/node and almost no allocation (one
-indicative run), against ≈56–72 ns/node and 32 B/node over `Fix` in the same run.
+own node type allocates no `Fix` wrappers and is cheaper per node than over `Fix` (research:
+≈21–34 against ≈46–77 ns/node); phase 4 records measured budgets.
 """
 project(x) = x
 project(f::Fix) = f.unfix
@@ -55,6 +55,7 @@ project(f::Fix) = f.unfix
 
 A hole of an [`ChuiCore.apo`](@ref) coalgebra: `tree` is already finished and is embedded as
 is, without unfolding further (Haskell's `Left`). See also [`ChuiCore.More`](@ref).
+Cost: a one-field wrapper (no allocation when `tree` is isbits).
 """
 struct Done{T}
     tree::T
@@ -64,7 +65,7 @@ end
     More(seed)
 
 A hole of an [`ChuiCore.apo`](@ref) or [`ChuiCore.futu`](@ref) coalgebra: keep unfolding from
-`seed` (Haskell's `Right` in `apo`, `Pure` in `futu`).
+`seed` (Haskell's `Right` in `apo`, `Pure` in `futu`). Cost: a one-field wrapper.
 """
 struct More{S}
     seed::S
@@ -76,7 +77,8 @@ end
 A hole of a [`ChuiCore.histo`](@ref) algebra (one node of Haskell's `Cofree`): `value` is the
 algebra's result for that subtree and `layer` the subtree's layer, whose holes are again `Attr`s.
 So the algebra sees the results for all descendants, not only the children. Both fields are
-`Any` (the history of a tree is not inferable; research: `histo` infers `Any`).
+`Any` (the history of a tree is not inferable; research: `histo` infers `Any`). Cost: one heap
+object per node of the folded structure, kept alive until `histo` returns.
 """
 struct Attr
     value::Any
@@ -87,7 +89,8 @@ end
     Emit(layer)
 
 A hole of a [`ChuiCore.futu`](@ref) coalgebra: emit one more layer at once (Haskell's `Free`
-constructor in `futu`); its holes are again `More(seed)` or `Emit(layer)`.
+constructor in `futu`); its holes are again `More(seed)` or `Emit(layer)`. Cost: a one-field
+wrapper.
 """
 struct Emit{L}
     layer::L

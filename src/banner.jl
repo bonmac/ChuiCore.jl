@@ -21,9 +21,9 @@ next to Base's is a conflict with `Base`.
 and every module reachable from `Main` through its submodules (e.g. `module A … end` typed at the
 REPL), except `mod` itself. Only modules loaded **before** the call are seen.
 
-Cost: one pass over the other modules per exported name (`Base.isexported` checks), after
-compilation 0.02–0.15 ms for a module with 21–134 exports in a session with 33–50 loaded modules
-(stdlibs; measured on 1.10.12 and 1.13.2). Meant for package load, not for loops.
+Cost: one pass over the other modules per exported name (`Base.isexported` checks), so
+O(exports × loaded modules), well under a millisecond for typical sessions after compilation
+(phase 4 records the measured budget). Meant for package load, not for loops.
 """
 function binding_conflicts(mod::Module)
     others = _other_modules(mod)

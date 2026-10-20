@@ -79,6 +79,31 @@ end
     @test seen[2] === t.unfix.r.unfix.r
 end
 
+@testitem "schemes: para hands the algebra the original object (mutable nodes; review S4)" tags = [:unit] begin
+    using Test
+    C = ChuiCore
+    # Mutable nodes: `===` is object identity, so a `para` that rebuilt or copied the children
+    # before handing them to the algebra would fail here (immutable fixtures cannot tell).
+    struct MNodeTag end
+    mutable struct MNode
+        v::Int
+        kids::Vector{Any}
+    end
+    C.constructorclass(::Type{MNode}) = MNodeTag()
+    C.FunctorStyle(::MNodeTag) = C.IsFunctor()
+    C.fmap(::C.IsFunctor, f, n::MNode) = MNode(n.v, Any[f(k) for k in n.kids])
+    leaf1, leaf2 = MNode(1, Any[]), MNode(2, Any[])
+    mid = MNode(3, Any[leaf2])
+    root = MNode(4, Any[leaf1, mid])
+    seen = Any[]
+    alg(n::MNode) = (foreach(k -> push!(seen, k[1]), n.kids); n.v + sum((k[2] for k in n.kids); init = 0))
+    @test C.para(alg, root) == 10
+    @test length(seen) == 3
+    @test any(s -> s === leaf1, seen) && any(s -> s === mid, seen) && any(s -> s === leaf2, seen)
+    # A copy with equal contents is not accepted as the original.
+    @test !any(s -> s === MNode(2, Any[]), seen)
+end
+
 @testitem "schemes: apo insert into a sorted list" tags = [:unit] setup = [SchemeFx] begin
     using Test
     using .SchemeFx: NilF, ConsF, fromlist, tolist

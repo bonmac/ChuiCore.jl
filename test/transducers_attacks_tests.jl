@@ -28,6 +28,22 @@ end
     @test rs == [55, 55, 55]
 end
 
+@testitem "review S1: a Reduced from op is partition-local unless it depends only on the element" tags = [:unit] begin
+    CC = ChuiCore
+    # Element-dependent stop: the documented condition holds, so every partitioning agrees with foldxl.
+    byelem(a, x) = x > 7 ? CC.reduced(a) : a + x
+    @test CC.foldxl(byelem, CC.Map(identity), 1:10; init = 0) == 28
+    for nt in (1, 2, 3, 4)
+        @test CC.foldxt(byelem, CC.Map(identity), collect(1:10); init = () -> 0, merge = +, ntasks = nt) == 28
+    end
+    # Accumulator-dependent stop: outside the documented condition, decided per partition (pinned).
+    byacc(a, x) = a + x > 10 ? CC.reduced(a) : a + x
+    @test CC.foldxl(byacc, CC.Map(identity), 1:10; init = 0) == 10
+    @test CC.foldparts(byacc, CC.Map(identity), [1:3, 4:10]; init = () -> 0, merge = +) == 15
+    # The documented remedy: a Take/TakeWhile stop makes the pipeline stateful, hence sequential.
+    @test CC.foldparts(+, CC.TakeWhile(x -> x <= 4), [1:3, 4:10]; init = () -> 0, merge = +) == 10
+end
+
 @testitem "A4: a nothing accumulator does not collide with the skip sentinel" tags = [:unit] begin
     const CC = ChuiCore
     lastmatch(a, x) = x % 7 == 0 ? x : a
