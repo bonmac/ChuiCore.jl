@@ -60,8 +60,9 @@ every checkpoint. Keep it short; history lives in git and in ADRs.
 
 - ChuiCore's own `__init__` banner call (the brief's "In `__init__`, when `isinteractive()`"):
   not implemented in phases 3–5; the lead assigned it to a follow-up lane after this merges.
-- Factory blind spot: `scripts/check_docs.jl` reads Documenter's bare `[x](@ref)` in Markdown as
-  a stale path; pages use `(@ref Target)`. A factory fix (T3).
+- Factory blind spot: `scripts/check_docs.jl` reads a Documenter cross-reference link whose
+  target is a bare `@ref` (no explicit target) in Markdown as a stale path; pages use the
+  explicit-target form `@ref ChuiCore.x`. A factory fix (T3).
 - `ChuiCoreTransducersExt`; prisms inside Accessors compositions; `eduction`; a stack-safe `cata`;
   a typed `Cofree` (unchanged from phase 4).
 - Factory nit N6 (`dod.jl`/`lane audit` read a stale `origin/main`): factory lane's.
