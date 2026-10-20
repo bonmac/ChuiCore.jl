@@ -23,6 +23,19 @@ Tag `CoproductTag()`: Functor and Traversable, delegating to the payload (so `ca
 already gives open sums; a `Coproduct` adds a closed, nameable signature.
 
 **Cost:** one box per injection (field `Any`), one extra dispatch per `fmap` or handler call.
+
+```jldoctest
+julia> using ChuiCore: Coproduct, Inl, Inr, inj
+
+julia> abstract type KV end; struct Get <: KV; key::Symbol; end
+
+julia> abstract type Log end; struct Tell <: Log; msg::String; end
+
+julia> const Sig = Coproduct{KV, Log};
+
+julia> (inj(Sig, Get(:a)) isa Inl{KV, Log}, inj(Sig, Tell("hi")) isa Inr{KV, Log})
+(true, true)
+```
 """
 abstract type Coproduct{F, G} end
 
@@ -32,6 +45,16 @@ abstract type Coproduct{F, G} end
 The left injection of a [`ChuiCore.Coproduct`](@ref)`{F,G}` (`x isa F`). `==`, `isequal` and
 `hash` are structural; `Inl` and `Inr` values are never equal. Cost: one wrapper with an `Any`
 field (a heap allocation; dispatch on the payload is dynamic).
+
+```jldoctest
+julia> using ChuiCore: Inl, Inr
+
+julia> Inl{Int, String}(1) == Inl{Int, String}(1)
+true
+
+julia> Inl{Int, String}(1) == Inr{Int, String}(1)
+false
+```
 """
 struct Inl{F, G} <: Coproduct{F, G}
     x::Any
@@ -43,6 +66,15 @@ end
 The right injection of a [`ChuiCore.Coproduct`](@ref)`{F,G}` (`x` in `G`, itself possibly an
 injection into a nested coproduct). `==`, `isequal` and `hash` are structural. Cost: as
 [`ChuiCore.Inl`](@ref), one wrapper per nesting level.
+
+```jldoctest
+julia> using ChuiCore: Coproduct, Inl, Inr, inj
+
+julia> x = inj(Coproduct{Int, Coproduct{String, Symbol}}, :s);   # nested to the right
+
+julia> (x isa Inr, x.x isa Inr, x.x.x)
+(true, true, :s)
+```
 """
 struct Inr{F, G} <: Coproduct{F, G}
     x::Any
@@ -62,6 +94,18 @@ Constructor-class tag (ADR-0001 §3) of every [`ChuiCore.Coproduct`](@ref): Func
 Traversable, delegating to the payload's instance (an `ArgumentError` if the payload has none).
 A singleton. Cost: dispatch on the tag is free; `fmap`/`traverse` cost one dynamic dispatch on the
 payload plus its instance's own cost and one new wrapper.
+
+```jldoctest
+julia> using ChuiCore: CoproductTag, Coproduct, Inl, constructorclass, fmap
+
+julia> constructorclass(Coproduct{Vector, Some}) === CoproductTag()
+true
+
+julia> fmap(x -> 2x, Inl{Vector, Some}([1, 2])).x   # delegates to the payload's Functor
+2-element Vector{Int64}:
+ 2
+ 4
+```
 """
 struct CoproductTag end
 
@@ -96,6 +140,20 @@ contains `x`'s type, else `Inr{F,G}(inj(G, x))`, so nested right coproducts work
 One method with type-level checks (not one method per case), so the method table has no
 ambiguities. **Cost:** the checks are on types and usually fold at compile time; one box per
 coproduct level.
+
+```jldoctest
+julia> using ChuiCore: Coproduct, Inl, Inr, inj
+
+julia> inj(Int, 3)                                # reflexive
+3
+
+julia> inj(Coproduct{Int, String}, "a") == Inr{Int, String}("a")
+true
+
+julia> inj(Coproduct{Int, String}, :a)
+ERROR: ArgumentError: cannot inject a Symbol into the signature ChuiCore.Coproduct{Int64, String}: no component contains it
+[...]
+```
 """
 function inj(::Type{S}, x) where {S}
     x isa S && return x
@@ -112,6 +170,15 @@ Project `x` onto `T` (Swierstra's `prj`): `Some(x)` when `x isa T`; for an `Inl`
 projection of its payload; otherwise `nothing`. `prj(T, inj(S, y)) == Some(y)` when `y isa T`.
 
 **Cost:** one `isa` per coproduct level.
+
+```jldoctest
+julia> using ChuiCore: Coproduct, inj, prj
+
+julia> x = inj(Coproduct{Int, String}, "a");
+
+julia> (prj(String, x), prj(Int, x))
+(Some("a"), nothing)
+```
 """
 function prj(::Type{T}, x) where {T}
     x isa T && return Some(x)
@@ -123,9 +190,13 @@ end
 # The freer monad
 
 const _COST_FREE = """
-**Cost:** a program is data: ≈0.5–1.2 µs and ≈0.4–0.5 KB per interpreted instruction in the
-research measurement, 80–200× a plain loop. Free monads are for describing programs and plans
-(data to inspect, optimise and interpret), not for inner loops. Nothing infers (`Any`).
+**Cost:** a program is data. Measured for this implementation in phase 5 (BenchmarkTools
+medians of building and `interpret`ing programs of 10^3 and 10^4 instructions with a counting
+handler, right- and left-nested binds, Julia 1.13.2 and 1.10.12, one thread, a loaded shared
+machine): ≈0.16–0.45 µs and ≈130–270 B per interpreted instruction. The research prototype
+measured ≈0.5–1.2 µs and ≈0.4–0.5 KB, 80–200× a plain `Dict` loop of ≈6 ns per step. Free
+monads are for describing programs and plans (data to inspect, optimise and interpret), not for
+inner loops. Nothing infers (`Any`).
 """
 
 """
@@ -142,6 +213,20 @@ interpretation), so left-nested `chain`s stay linear where the classic `Free` en
 quadratic (research: 43–47 s against 5–12 ms at 10^4 left binds).
 
 $_COST_FREE
+
+```jldoctest
+julia> using ChuiCore: Free, liftF, interpret
+
+julia> struct Ask end
+
+julia> prog = chain(x -> chain(y -> ChuiCore.Pure(x + y), liftF(Ask())), liftF(Ask()));
+
+julia> prog isa Free
+true
+
+julia> interpret(_ -> 21, prog)
+42
+```
 """
 abstract type Free end
 
@@ -150,6 +235,16 @@ abstract type Free end
 
 A finished [`ChuiCore.Free`](@ref) program with result `x`; `pure(FreeTag(), x) == Pure(x)`.
 Cost: a one-field wrapper; `chain(f, Pure(x))` calls `f(x)` directly.
+
+```jldoctest
+julia> using ChuiCore: Pure, FreeTag, pure, interpret
+
+julia> pure(FreeTag(), 3) == Pure(3)
+true
+
+julia> interpret(identity, chain(x -> Pure(x + 1), Pure(3)))   # no instruction to handle
+4
+```
 """
 struct Pure{T} <: Free
     value::T
@@ -174,6 +269,15 @@ applied to the instruction's answer. `k` is an internal continuation tree: build
 values with [`ChuiCore.liftF`](@ref) and `chain`, not by hand. Field `op` is public (an
 interpreter dispatches on it). Cost: one heap object per instruction plus one tree node per
 `chain`; see [`ChuiCore.Free`](@ref) for the per-instruction interpretation cost.
+
+```jldoctest
+julia> using ChuiCore: Impure, liftF
+
+julia> m = chain(x -> liftF(:second), liftF(:first));
+
+julia> (m isa Impure, m.op)   # the first instruction is visible without running anything
+(true, :first)
+```
 """
 struct Impure <: Free
     op::Any
@@ -186,6 +290,16 @@ end
 Constructor-class tag (ADR-0001 §3) of [`ChuiCore.Free`](@ref) programs: Functor, Applicative
 (`pure(FreeTag(), x) == Pure(x)`), Monad. `chain` and `fmap` on an `Impure` are O(1) (they
 append to the continuation tree). A singleton. Cost: dispatch on the tag is free.
+
+```jldoctest
+julia> using ChuiCore: FreeTag, Pure, liftF, constructorclass, fmap, interpret
+
+julia> constructorclass(typeof(liftF(:ask))) === constructorclass(Pure{Int}) === FreeTag()
+true
+
+julia> interpret(_ -> 20, fmap(x -> x + 1, liftF(:ask)))
+21
+```
 """
 struct FreeTag end
 
@@ -196,7 +310,23 @@ struct FreeTag end
 The one-instruction program: perform `op` and return its answer. The two-argument form first
 injects `op` into the signature `S` (see [`ChuiCore.inj`](@ref)).
 
+**Effects:** none. `liftF` (like `chain` and `fmap` on programs) only describes the instruction;
+nothing runs until an interpreter ([`ChuiCore.interpret`](@ref), [`ChuiCore.foldfree`](@ref))
+calls a handler on it.
+
 **Cost:** one `Impure` and one continuation leaf.
+
+```jldoctest
+julia> using ChuiCore: Coproduct, Inr, liftF, interpret
+
+julia> m = liftF(Coproduct{Int, String}, "hello");
+
+julia> m.op == Inr{Int, String}("hello")
+true
+
+julia> interpret(op -> length(op.x), m)
+5
+```
 """
 liftF(op) = Impure(op, _Leaf(Pure))
 liftF(::Type{S}, op) where {S} = liftF(inj(S, op))
@@ -256,7 +386,28 @@ stack, in either bind association. A handler is any callable, usually one method
 type, and may hold state (a callable struct). For a [`ChuiCore.Coproduct`](@ref) signature
 combine one handler per component with [`ChuiCore.cohandler`](@ref).
 
+**Effects:** exactly those of `handler`, called once per instruction in program order;
+`interpret` adds none of its own.
+
 $_COST_FREE
+
+```jldoctest
+julia> using ChuiCore: liftF, interpret
+
+julia> struct Say; msg::String; end
+
+julia> prog = chain(_ -> chain(_ -> ChuiCore.Pure(:done), liftF(Say("b"))), liftF(Say("a")));
+
+julia> said = String[];
+
+julia> interpret(op -> (push!(said, op.msg); nothing), prog)
+:done
+
+julia> said
+2-element Vector{String}:
+ "a"
+ "b"
+```
 """
 function interpret(handler, m::Free)
     while m isa Impure
@@ -284,7 +435,21 @@ handlers returning monadic values, as the natural transformation of
 [`ChuiCore.foldfree`](@ref)). An instruction outside the signature is a `MethodError`.
 `==` compares the component handlers.
 
+**Effects:** none of its own; the combined handler performs the effects of `hf` and `hg` when an
+interpreter calls it.
+
 **Cost:** one dispatch per coproduct level per instruction.
+
+```jldoctest
+julia> using ChuiCore: Coproduct, liftF, interpret, cohandler
+
+julia> const Sig = Coproduct{Int, String};
+
+julia> prog = chain(n -> chain(s -> ChuiCore.Pure(n + s), liftF(Sig, "abc")), liftF(Sig, 10));
+
+julia> interpret(cohandler(n -> 2n, s -> length(s)), prog)   # 2 * 10 + length("abc")
+23
+```
 """
 cohandler(hf, hg) = _CoHandler(hf, hg)
 cohandler(h1, h2, h3, rest...) = _CoHandler(h1, cohandler(h2, h3, rest...))
@@ -309,7 +474,29 @@ depth grows with the number of instructions run, about 4 frames each, so long pr
 roughly 10^4 instructions) can overflow. For long programs use [`ChuiCore.interpret`](@ref),
 which is a loop, or a target monad whose `chain` is itself stack-safe.
 
+**Effects:** those of `nt` (called once per instruction reached) and of the target monad's
+`chain`; `foldfree` adds none of its own.
+
 $_COST_FREE
+
+```jldoctest
+julia> using ChuiCore: liftF, foldfree, MaybeTag, ArrayTag
+
+julia> prog = chain(x -> chain(y -> ChuiCore.Pure(x + y), liftF(:ask)), liftF(:ask));
+
+julia> foldfree(MaybeTag(), _ -> Some(21), prog)
+Some(42)
+
+julia> foldfree(MaybeTag(), _ -> nothing, prog) === nothing
+true
+
+julia> foldfree(ArrayTag(), _ -> [1, 2], prog)   # every combination of answers
+4-element Vector{Int64}:
+ 2
+ 3
+ 3
+ 4
+```
 """
 foldfree(tag, nt, m::Pure) = pure(tag, m.value)
 foldfree(tag, nt, m::Impure) = chain(_FoldK(tag, nt, m.k), nt(m.op))
