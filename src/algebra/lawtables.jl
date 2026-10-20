@@ -15,8 +15,10 @@ function _R(agg, chunks)
     return final(agg, a)
 end
 
-# CC-006's empty-input exceptions are outcomes too: an empty sample makes both sides of a law
-# throw the same type, which is agreement. Any other exception propagates (the law then errors).
+# CC-006's empty-input exceptions are outcomes too: when the law's whole input `v` is EMPTY, both
+# sides throwing the same type is agreement. On a non-empty input any throw fails the law (a
+# `combine` that always throws must not pass by throwing on both sides). Exceptions other than
+# ArgumentError/BoundsError propagate (the law then errors).
 struct _Threw
     type::DataType
 end
@@ -28,7 +30,7 @@ function _outcome(f)
         _Threw(typeof(e))
     end
 end
-_eqo(eq, r₁, r₂, v) = r₁ isa _Threw || r₂ isa _Threw ? isequal(r₁, r₂) : eq(r₁, r₂, v)
+_eqo(eq, r₁, r₂, v) = r₁ isa _Threw || r₂ isa _Threw ? isempty(v) && isequal(r₁, r₂) : eq(r₁, r₂, v)
 
 _flat(xs...) = collect(Iterators.flatten(map(collect, xs)))
 
@@ -81,12 +83,14 @@ function _monoid_laws(m, eq)
         n = neutral(m)
         return _eqo(eq, _outcome(() -> final(m, combine(m, a, n))), _outcome(() -> final(m, _acc(m, x))), _flat(x))
     end
-    matches = _ -> isequal(_outcome(() -> final(m, init(m))), _outcome(() -> final(m, neutral(m))))
+    # A monoid's identity finalizes without throwing: an exception here is an error of the law, not
+    # an outcome to compare (two throwing `final`s must not count as agreement).
+    matches = _ -> isequal(final(m, init(m)), final(m, neutral(m)))
     fresh = function (x)
         a = _acc(m, x)
-        before = deepcopy(_outcome(() -> final(m, neutral(m))))
+        before = deepcopy(final(m, neutral(m)))
         combine(m, neutral(m), a)
-        return isequal(_outcome(() -> final(m, neutral(m))), before)
+        return isequal(final(m, neutral(m)), before)
     end
     return (
         _semigroup_laws(m, eq)...,

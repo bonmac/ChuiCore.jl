@@ -19,7 +19,10 @@ The default `default_eq` is exact (`isequal`). Cost: one `op` call per element; 
 struct ReduceM{C, N, F, E}
     op::F
     neutral::E
-    ReduceM{C, N}(op::F, neutral::E) where {C, N, F, E} = new{C, N, F, E}(op, neutral)
+    function ReduceM{C, N}(op::F, neutral::E) where {C, N, F, E}
+        C isa Bool && N isa Bool || throw(ArgumentError("ReduceM{C, N}: C and N must be Bool, got $(repr(C)), $(repr(N))"))
+        return new{C, N, F, E}(op, neutral)
+    end
 end
 function ReduceM(op; neutral = NoValue(), commutative::Bool = false)
     return ReduceM{commutative, !(neutral isa NoValue)}(op, neutral)

@@ -22,17 +22,19 @@
         return ts
     end
 
-    "Descriptions of the test sets that directly hold a `Fail` or an `Error`."
-    function failing(ts::Capture, acc = Set{String}())
+    "Descriptions of the test sets that directly hold a result of type `T`."
+    function holding(T, ts::Capture, acc = Set{String}())
         for r in ts.results
             if r isa Capture
-                failing(r, acc)
-            elseif r isa Union{Test.Fail, Test.Error}
+                holding(T, r, acc)
+            elseif r isa T
                 push!(acc, ts.description)
             end
         end
         return acc
     end
+    # A planted law must FAIL, not crash: an `Error` is never counted as a caught violation.
+    failing(ts::Capture) = holding(Test.Fail, ts)
 
     "Descriptions of the test sets that hold at least one result and no nested test set."
     function leaves(ts::Capture, acc = Set{String}())
@@ -47,12 +49,15 @@
         captured(f) -> (failing, ran)
 
     Run `f()` inside a capturing test set. Returns the set of test-set descriptions holding a
-    failure or error, and the set of leaf test sets that ran.
+    `Fail`, and the set of leaf test sets that ran. Any `Error` inside (a crashing law, or a kit
+    that throws) is reported as a failing `@test` in the CALLER's test set, so it cannot hide.
     """
     function captured(f)
         ts = Test.@testset Capture "captured" begin
             f()
         end
+        errored = holding(Test.Error, ts)
+        Test.@test isempty(errored)
         return failing(ts), leaves(ts)
     end
 end

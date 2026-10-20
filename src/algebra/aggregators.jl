@@ -142,13 +142,15 @@ partial(::Max, acc, chunk) = _fold(max, acc, chunk)
 partial(::Min, acc, chunk) = _fold(min, acc, chunk)
 combine(::Max, a, b) = _nv(max, a, b)
 combine(::Min, a, b) = _nv(min, a, b)
+# Two step functions: merging two (lo, hi) accumulators, and folding one element into one. One
+# method each, so a Tuple ELEMENT is never mistaken for an accumulator (extrema([(1, 2), (3, 0)])).
 _minmax(a::Tuple, b::Tuple) = (min(a[1], b[1]), max(a[2], b[2]))
-_minmax(a::Tuple, x) = (min(a[1], x), max(a[2], x))
-partial(::Extrema, acc, chunk) = foldl(_minmax, chunk; init = acc)
+_minmax_el(a, x) = (min(a[1], x), max(a[2], x))
+partial(::Extrema, acc, chunk) = foldl(_minmax_el, chunk; init = acc)
 function partial(::Extrema, ::NoValue, chunk)
     y = iterate(chunk)
     y === nothing && return NoValue()
-    return foldl(_minmax, Iterators.rest(chunk, y[2]); init = (y[1], y[1]))
+    return foldl(_minmax_el, Iterators.rest(chunk, y[2]); init = (y[1], y[1]))
 end
 combine(::Extrema, a, b) = _nv(_minmax, a, b)
 

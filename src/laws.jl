@@ -212,6 +212,16 @@ $_KIT_DOC_COMMON
 """
 function test_arrow_laws end
 
+# A misspelled name in a kit's `laws` keyword would otherwise run nothing and pass silently.
+function _check_selected(laws, selected)
+    selected === nothing && return nothing
+    known = [law.name for law in laws]
+    unknown = [s for s in selected if !(s in known)]
+    isempty(unknown) ||
+        throw(ArgumentError("unknown law name(s) $(repr(unknown)); this kit's laws are $(repr(known))"))
+    return nothing
+end
+
 # kit name => law-table function (defined by each area's file). The drivers iterate this.
 const _KITS = (
     :test_semigroup_laws => :_semigroup_laws,

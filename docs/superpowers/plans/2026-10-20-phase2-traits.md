@@ -42,7 +42,7 @@ to be corrected), `init`, `partial`, `combine`, `final`, `iscommutative`, `combi
 `Moments`, `ReduceM`, `MapM`; `constructorclass`, the tags (`NoTag`, `MaybeTag`, `ArrayTag`,
 `TupleTag`, `DictTag`, `PairTag`, `FunctionTag`, `IdentityTag`, `ZipVectorTag`, `PredicateTag`), the
 `*Style` functions and their `Is*`/`Not*` values, the owned types `Identity`, `ZipVector`,
-`Predicate`; `default_eq`, `Law`.
+`Predicate`; `default_eq`, `ExactEq`, `Law`.
 
 **Clash evidence** (Julia 1.13.2, fresh scratch environment, 2026-10-20; `Base.isexported(M, n)`
 over the candidate names):

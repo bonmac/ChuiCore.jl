@@ -40,6 +40,7 @@ function _check(law::ChuiCore.Law, gens::Tuple, max_examples::Int)
 end
 
 function _run(title::String, laws, gens::Tuple, selected, max_examples::Int)
+    ChuiCore._check_selected(laws, selected)
     @testset "$title" begin
         for law in laws
             (selected === nothing || law.name in selected) || continue

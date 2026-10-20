@@ -6,9 +6,6 @@
 # the clash list keeps them public only (ADR-0005 §2).
 @compat public neutral, curry, fmap, pure, ap, traverse, sequence
 
-# Composition internals that appear in printed values.
-@compat public Curried, PApply, Flip
-
 # Law kits (ADR-0007).
 @compat public Law, ExactEq, default_eq
 

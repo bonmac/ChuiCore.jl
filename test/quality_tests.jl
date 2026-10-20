@@ -19,7 +19,7 @@ end
         # Supposition 0.3 declares nothing `public`: `Data.Possibility`, `Data.SampledFrom` and
         # `Data.Pairs` are its documented generator API; `Supposition.Pass` is the report internal
         # that ADR-0007 §4 accepts (pinned by compat, covered by the planted violations).
-        ignore = (:_KITS, :Possibility, :SampledFrom, :Pairs, :Pass)
+        ignore = (:_KITS, :_check_selected, :Possibility, :SampledFrom, :Pairs, :Pass)
         @test check_all_qualified_accesses_are_public(ChuiCore; ignore) === nothing
     end
 end

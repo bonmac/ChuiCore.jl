@@ -24,6 +24,7 @@ function _first_counterexample(law::ChuiCore.Law, gens::Tuple)
 end
 
 function _run(title::String, laws, gens::Tuple, selected)
+    ChuiCore._check_selected(laws, selected)
     @testset "$title" begin
         for law in laws
             (selected === nothing || law.name in selected) || continue
