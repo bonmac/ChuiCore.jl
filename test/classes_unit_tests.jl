@@ -89,8 +89,16 @@ end
     end
     # The trait folds to the constant style.
     ci = only(code_typed(style_of, Tuple{Vector{Int}}))[1]
-    @test length(ci.code) == 1 && ci.code[1] isa Core.ReturnNode
-    rv = ci.code[1].val
+    code = ci.code
+    if Base.JLOptions().code_coverage != 0
+        # Coverage (CI, coordinator ADR-0011) puts `Expr(:code_coverage_effect)` counter statements before the
+        # folded `return`; the fold itself is unchanged. Drop exactly those statements.
+        iscov(st) = st isa Expr && st.head === :code_coverage_effect
+        @test any(iscov, code)
+        code = filter(!iscov, code)
+    end
+    @test length(code) == 1 && code[1] isa Core.ReturnNode
+    rv = code[1].val
     @test (rv isa QuoteNode ? rv.value : rv) === ChuiCore.IsFunctor()   # 1.10 wraps it in a QuoteNode
 end
 
